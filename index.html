@@ -3,219 +3,495 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>app-placement — Suivi des candidats</title>
+  <title>Princess Game 👑 - Couronnes & Vêtements</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-  <!-- Config locale : tokens Airtable + URL webhook Make -->
-  <script src="config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --navy: #0A1628; --navy-mid: #1C2F4E; --teal: #0D9488;
-      --amber: #F0A500; --red: #DC2626; --bg: #F1F5F9;
-      --white: #FFFFFF; --text: #0F172A; --muted: #64748B; --border: #E2E8F0;
+      --royal-purple: #6B21A8;
+      --gold: #F59E0B;
+      --rose: #EC4899;
+      --lavender: #E9D5FF;
+      --white: #FFFFFF;
+      --text: #1F2937;
+      --bg-light: #FEF3F8;
+      --shadow: 0 10px 30px rgba(107, 33, 168, 0.2);
     }
 
-    body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, var(--bg-light) 0%, #F3E8FF 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
 
     header {
-      background: var(--navy);
-      padding: 18px 40px;
-      display: flex; align-items: center; gap: 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+      background: linear-gradient(90deg, var(--royal-purple) 0%, var(--rose) 100%);
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      box-shadow: var(--shadow);
+      color: var(--white);
     }
-    .app-logo { width:36px; height:36px; background:var(--teal); border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
-    header h1 { font-size:1.1rem; font-weight:700; color:var(--white); }
-    header p  { font-size:0.8rem; color:rgba(255,255,255,0.5); margin-top:1px; }
-    .header-badge { margin-left:auto; background:rgba(13,148,136,0.18); color:#5EEAD4; font-size:0.72rem; font-weight:600; padding:4px 10px; border-radius:20px; border:1px solid rgba(13,148,136,0.3); }
 
-    main { max-width: 920px; margin: 32px auto; padding: 0 20px 60px; }
+    .logo { font-size: 2.5rem; }
+    header h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 900; }
+    header p { font-size: 0.9rem; opacity: 0.9; }
 
-    /* ─── Architecture info banner ─── */
-    .arch-banner {
-      background: white; border-radius: 12px; padding: 16px 22px; margin-bottom: 24px;
-      display: flex; gap: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    .header-stats {
+      margin-left: auto;
+      display: flex;
+      gap: 24px;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 20px 80px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 32px;
+      border-bottom: 2px solid var(--lavender);
+    }
+
+    .tab-btn {
+      padding: 14px 24px;
+      background: none;
+      border: none;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text);
+      opacity: 0.5;
+      transition: all 0.3s;
+      font-family: 'Poppins', sans-serif;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+    }
+
+    .tab-btn.active {
+      opacity: 1;
+      color: var(--royal-purple);
+      border-bottom-color: var(--gold);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ─── GAMES SECTION ─── */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .game-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 28px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+    }
+
+    .game-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 15px 40px rgba(107, 33, 168, 0.3);
+    }
+
+    .game-icon { font-size: 3rem; margin-bottom: 12px; }
+    .game-card h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      margin-bottom: 12px;
+      color: var(--royal-purple);
+    }
+
+    .game-card p {
+      font-size: 0.95rem;
+      color: #6B7280;
+      margin-bottom: 16px;
+    }
+
+    .game-reward {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--gold), var(--rose));
+      color: var(--white);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .btn-play {
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px;
+      background: linear-gradient(90deg, var(--royal-purple), var(--rose));
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .btn-play:hover { transform: scale(1.05); }
+    .btn-play:active { transform: scale(0.98); }
+
+    /* ─── WARDROBE SECTION ─── */
+    .wardrobe-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px;
+    }
+
+    .outfit-item {
+      background: var(--white);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      position: relative;
+      transition: all 0.3s;
+    }
+
+    .outfit-item.locked {
+      opacity: 0.6;
+      filter: grayscale(80%);
+    }
+
+    .outfit-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 35px rgba(107, 33, 168, 0.25);
+    }
+
+    .outfit-icon { font-size: 2.5rem; margin-bottom: 8px; }
+    .outfit-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--royal-purple);
+      margin-bottom: 8px;
+    }
+
+    .outfit-cost {
+      font-size: 0.8rem;
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .outfit-status {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 0.8rem;
     }
-    .arch-item { display:flex; align-items:center; gap:8px; }
-    .arch-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-    .arch-item.direct .arch-dot { background: #2563EB; }
-    .arch-item.make .arch-dot { background: #F97316; }
-    .arch-item span.label { color: var(--muted); }
-    .arch-item strong { color: var(--text); }
 
-    .section-title { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:14px; }
+    .outfit-status.owned { background: var(--rose); }
 
-    /* ─── Candidate cards ─── */
-    .candidate-list { display:flex; flex-direction:column; gap:12px; }
-
-    .candidate-card {
-      background: white; border-radius: 12px; padding: 20px 24px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-      display: flex; align-items: center; gap: 20px;
+    .btn-buy {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+      background: var(--gold);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.3s;
+      font-family: 'Poppins', sans-serif;
     }
 
-    .avatar {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: linear-gradient(135deg, #0D9488, #2563EB);
-      color: white; font-weight: 700; font-size: 1rem;
-      display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+    .btn-buy:hover { background: #D97706; }
+    .btn-buy:disabled {
+      background: #D1D5DB;
+      cursor: not-allowed;
     }
 
-    .candidate-info { flex: 1; min-width: 0; }
-    .candidate-name { font-weight: 700; font-size: 0.98rem; color: var(--text); }
-    .candidate-meta { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
-
-    .status-badge {
-      font-size: 0.72rem; font-weight: 700; padding: 4px 12px; border-radius: 20px;
-      text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
-    }
-    .status-badge.en-cours { background:#EFF6FF; color:#2563EB; }
-    .status-badge.entretien { background:#FFF7ED; color:#C2410C; }
-    .status-badge.place { background:#F0FDF4; color:#16A34A; }
-
-    select.status-select {
-      padding: 7px 10px; border: 1.5px solid var(--border); border-radius: 7px;
-      font-size: 0.82rem; font-family:'Inter',sans-serif; color: var(--text);
-      background: white; cursor: pointer; flex-shrink: 0;
+    .btn-equip {
+      width: 100%;
+      padding: 8px;
+      margin-top: 8px;
+      background: var(--rose);
+      color: var(--white);
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: 'Poppins', sans-serif;
     }
 
-    .btn-place {
-      padding: 9px 16px; background: var(--teal); color: white; border: none;
-      border-radius: 8px; font-size: 0.84rem; font-weight: 700; cursor: pointer;
-      transition: all 0.15s; flex-shrink: 0; white-space: nowrap;
-    }
-    .btn-place:hover { background:#0B7A70; }
-    .btn-place:disabled { background:#94A3B8; cursor:not-allowed; }
-    .btn-place.placed { background:#F0FDF4; color:#16A34A; cursor:default; }
-    .btn-place.placed:hover { background:#F0FDF4; }
-
-    .empty-state, .loading-state {
-      text-align: center; padding: 60px 20px; color: var(--muted); font-size: 0.9rem;
-    }
-
-    /* ─── Modal ─── */
+    /* ─── MODAL ─── */
     .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(10,22,40,0.6);
-      align-items: center; justify-content: center; z-index: 100; padding: 20px;
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(107, 33, 168, 0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
     }
+
     .modal-overlay.show { display: flex; }
 
     .modal {
-      background: white; border-radius: 14px; padding: 28px 32px; max-width: 460px; width: 100%;
-      box-shadow: 0 30px 70px rgba(0,0,0,0.3);
+      background: var(--white);
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+      text-align: center;
+      animation: slideIn 0.3s;
     }
 
-    .modal h3 { font-size: 1.2rem; font-weight: 700; color: var(--navy-mid); margin-bottom: 6px; }
-    .modal p.modal-sub { font-size: 0.85rem; color: var(--muted); margin-bottom: 20px; }
-
-    .modal-field { margin-bottom: 14px; }
-    .modal-field label { font-size: 0.8rem; font-weight: 600; color: var(--navy-mid); display:block; margin-bottom:5px; }
-    .modal-field input {
-      width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 7px;
-      font-size: 0.9rem; font-family:'Inter',sans-serif; outline: none;
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    .modal-field input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(13,148,136,0.1); }
 
-    .modal-fanout {
-      background: #FFF7ED; border-radius: 8px; padding: 12px 14px; margin: 16px 0;
-      font-size: 0.78rem; color: #7C2D12;
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      color: var(--royal-purple);
+      margin-bottom: 20px;
     }
-    .modal-fanout .fanout-title { font-weight: 700; margin-bottom: 6px; }
-    .fanout-list { display: flex; flex-direction: column; gap: 4px; }
-    .fanout-item { display: flex; align-items: center; gap: 6px; }
 
-    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-result {
+      font-size: 1.2rem;
+      margin-bottom: 24px;
+      font-weight: 600;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
     .modal-actions button {
-      flex: 1; padding: 11px; border-radius: 8px; font-size: 0.88rem; font-weight: 700;
-      cursor: pointer; border: none; font-family:'Inter',sans-serif;
+      flex: 1;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      transition: all 0.3s;
     }
-    .btn-cancel { background: #F1F5F9; color: var(--muted); }
-    .btn-confirm { background: var(--teal); color: white; }
-    .btn-confirm:disabled { background: #94A3B8; cursor: not-allowed; }
+
+    .btn-confirm {
+      background: linear-gradient(90deg, var(--gold), var(--rose));
+      color: var(--white);
+    }
+
+    .btn-confirm:hover { transform: scale(1.02); }
+
+    .btn-cancel {
+      background: var(--lavender);
+      color: var(--royal-purple);
+    }
 
     .toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
-      background: var(--navy); color: white; padding: 14px 24px; border-radius: 10px;
-      font-size: 0.88rem; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      opacity: 0; pointer-events: none; transition: all 0.3s; display:flex; align-items:center; gap:10px;
-      max-width: 480px; z-index: 200;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: linear-gradient(90deg, var(--royal-purple), var(--rose));
+      color: var(--white);
+      padding: 16px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateX(400px);
+      transition: all 0.3s;
+      z-index: 200;
     }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .toast.error { background: #DC2626; }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .profile-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+
+    .princess-avatar {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    .profile-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem;
+      color: var(--royal-purple);
+      margin-bottom: 12px;
+    }
+
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .stat {
+      background: var(--bg-light);
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text);
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
 
 <header>
-  <div class="app-logo">🎯</div>
+  <div class="logo">👑</div>
   <div>
-    <h1>app-placement</h1>
-    <p>Suivi des candidats — Marie Fontaine RH</p>
+    <h1>Princess Kingdom</h1>
+    <p>Gagne des couronnes et des vêtements magiques ✨</p>
   </div>
-  <div class="header-badge">⚙️ Make branché sur "Placé" uniquement</div>
+  <div class="header-stats">
+    <div>👑 <span id="crown-count">0</span></div>
+    <div>💎 <span id="gem-count">0</span></div>
+  </div>
 </header>
 
 <main>
-
-  <div class="arch-banner">
-    <div class="arch-item direct">
-      <div class="arch-dot"></div>
-      <span class="label">Lecture liste + changement statut simple</span> → <strong>Airtable direct</strong>
-    </div>
-    <div class="arch-item make">
-      <div class="arch-dot"></div>
-      <span class="label">Clic "Marquer comme placé"</span> → <strong>Make (fan-out 4 services)</strong>
-    </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('games')">🎮 Jeux</button>
+    <button class="tab-btn" onclick="switchTab('wardrobe')">👗 Garde-robe</button>
+    <button class="tab-btn" onclick="switchTab('profile')">👸 Mon Profil</button>
   </div>
 
-  <div class="section-title">👥 Candidats en cours</div>
-  <div class="candidate-list" id="candidate-list">
-    <div class="loading-state">Chargement des candidats…</div>
-  </div>
+  <!-- GAMES TAB -->
+  <div class="tab-content active" id="games">
+    <div class="games-grid" id="games-grid">
+      <div class="game-card" onclick="startGame('memory')">
+        <div class="game-icon">🧩</div>
+        <h3>Memory Royal</h3>
+        <p>Trouvez les paires de couronnes cachées</p>
+        <div class="game-reward">+3 👑</div>
+        <button class="btn-play">Jouer</button>
+      </div>
 
-</main>
+      <div class="game-card" onclick="startGame('spin')">
+        <div class="game-icon">🎡</div>
+        <h3>Spin Fortune</h3>
+        <p>Tournez la roue de la fortune royale</p>
+        <div class="game-reward">+5 👑</div>
+        <button class="btn-play">Jouer</button>
+      </div>
 
-<!-- ─── MODAL : confirmation placement ─── -->
-<div class="modal-overlay" id="modal-overlay">
-  <div class="modal">
-    <h3>🎯 Marquer comme placé</h3>
-    <p class="modal-sub" id="modal-candidate-name">—</p>
+      <div class="game-card" onclick="startGame('quiz')">
+        <div class="game-icon">❓</div>
+        <h3>Quiz Royale</h3>
+        <p>Répondez aux questions sur les princesses</p>
+        <div class="game-reward">+4 👑</div>
+        <button class="btn-play">Jouer</button>
+      </div>
 
-    <div class="modal-field">
-      <label for="modal-entreprise">Entreprise cliente</label>
-      <input type="text" id="modal-entreprise" placeholder="Ex: Nexoria SAS">
-    </div>
-    <div class="modal-field">
-      <label for="modal-date-debut">Date de début de mission</label>
-      <input type="date" id="modal-date-debut">
-    </div>
-    <div class="modal-field">
-      <label for="modal-salaire">Salaire annuel brut négocié (€)</label>
-      <input type="number" id="modal-salaire" placeholder="45000" step="500">
-    </div>
-    <div class="modal-field">
-      <label for="modal-commission">Montant de la commission (€)</label>
-      <input type="number" id="modal-commission" placeholder="4500" step="100">
-    </div>
-
-    <div class="modal-fanout">
-      <div class="fanout-title">Ce déclenchement va automatiquement :</div>
-      <div class="fanout-list">
-        <div class="fanout-item">📄 Créer le contrat pré-rempli — Google Docs</div>
-        <div class="fanout-item">📅 Créer l'événement d'onboarding — Google Calendar</div>
-        <div class="fanout-item">💬 Notifier l'équipe — Slack</div>
-        <div class="fanout-item">💰 Ajouter la ligne au tracker commissions — Google Sheets</div>
+      <div class="game-card" onclick="startGame('coins')">
+        <div class="game-icon">💰</div>
+        <h3>Collect Gems</h3>
+        <p>Collectez les diamants qui tombent</p>
+        <div class="game-reward">+2 👑</div>
+        <button class="btn-play">Jouer</button>
       </div>
     </div>
+  </div>
 
+  <!-- WARDROBE TAB -->
+  <div class="tab-content" id="wardrobe">
+    <div class="wardrobe-grid" id="wardrobe-grid"></div>
+  </div>
+
+  <!-- PROFILE TAB -->
+  <div class="tab-content" id="profile">
+    <div class="profile-card">
+      <div class="princess-avatar" id="profile-avatar">👸</div>
+      <div class="profile-name" id="profile-name">Ma Princesse</div>
+      <div class="profile-stats">
+        <div class="stat">
+          <div class="stat-value" id="profile-crowns">0</div>
+          <div class="stat-label">Couronnes gagnées</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="profile-outfits">0</div>
+          <div class="stat-label">Tenues déverrouillées</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="profile-games">0</div>
+          <div class="stat-label">Jeux joués</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="profile-level">1</div>
+          <div class="stat-label">Niveau</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- GAME MODAL -->
+<div class="modal-overlay" id="game-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">🎮</div>
+    <div class="modal-result" id="modal-result"></div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
-      <button class="btn-confirm" id="btn-confirm-place" onclick="confirmPlacement()">Confirmer le placement</button>
+      <button class="btn-confirm" onclick="closeGameModal()">Continuer</button>
     </div>
   </div>
 </div>
@@ -224,223 +500,156 @@
 
 <script>
   // ════════════════════════════════════════════════════════════
-  //  LECTURE — directe Airtable, PAS de passage par Make.
-  //  Une lecture de liste n'a aucun besoin d'orchestration OAuth.
+  // GAME STATE & STORAGE
   // ════════════════════════════════════════════════════════════
 
-  let candidates = [];
-  let modalCandidateId = null;
+  const gameState = {
+    crowns: localStorage.getItem('crowns') ? parseInt(localStorage.getItem('crowns')) : 0,
+    gems: localStorage.getItem('gems') ? parseInt(localStorage.getItem('gems')) : 0,
+    ownedOutfits: localStorage.getItem('ownedOutfits') ? JSON.parse(localStorage.getItem('ownedOutfits')) : [],
+    equippedOutfit: localStorage.getItem('equippedOutfit') || 'default',
+    gamesPlayed: localStorage.getItem('gamesPlayed') ? parseInt(localStorage.getItem('gamesPlayed')) : 0,
+    playerName: localStorage.getItem('playerName') || 'Ma Princesse'
+  };
 
-  async function loadCandidates() {
-    const listEl = document.getElementById('candidate-list');
+  const outfits = [
+    { id: 'tiara', name: 'Tiara de Cristal', icon: '✨', cost: 10 },
+    { id: 'ball-gown', name: 'Robe de Bal', icon: '💃', cost: 15 },
+    { id: 'ruby-crown', name: 'Couronne Rubis', icon: '💎', cost: 20 },
+    { id: 'emerald', name: 'Émeraude Magique', icon: '🌟', cost: 25 },
+    { id: 'diamond', name: 'Couronne Diamant', icon: '👑', cost: 30 },
+    { id: 'magic-robe', name: 'Robe Magique', icon: '🔮', cost: 35 }
+  ];
 
-    if (typeof AIRTABLE_TOKEN === 'undefined' || AIRTABLE_TOKEN === 'COLLER_ICI_VOTRE_TOKEN_AIRTABLE') {
-      // Fallback démo si la config n'est pas encore renseignée (utile en session de formation)
-      candidates = DEMO_CANDIDATES;
-      renderCandidates();
-      return;
-    }
-
-    try {
-      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}`;
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      candidates = data.records.map(r => ({
-        id: r.id,
-        nom: r.fields.Nom || '—',
-        poste: r.fields.Poste || '—',
-        email: r.fields.Email || '',
-        statut: r.fields.Statut || 'En cours'
-      }));
-      renderCandidates();
-
-    } catch (err) {
-      listEl.innerHTML = `<div class="empty-state">❌ Erreur de chargement Airtable : ${err.message}<br><small>Vérifiez AIRTABLE_TOKEN et AIRTABLE_BASE_ID dans config.js</small></div>`;
-    }
+  function saveState() {
+    localStorage.setItem('crowns', gameState.crowns);
+    localStorage.setItem('gems', gameState.gems);
+    localStorage.setItem('ownedOutfits', JSON.stringify(gameState.ownedOutfits));
+    localStorage.setItem('equippedOutfit', gameState.equippedOutfit);
+    localStorage.setItem('gamesPlayed', gameState.gamesPlayed);
+    localStorage.setItem('playerName', gameState.playerName);
   }
 
-  function initials(nom) {
-    return nom.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+  function updateDisplay() {
+    document.getElementById('crown-count').textContent = gameState.crowns;
+    document.getElementById('gem-count').textContent = gameState.gems;
+    document.getElementById('profile-crowns').textContent = gameState.crowns;
+    document.getElementById('profile-outfits').textContent = gameState.ownedOutfits.length;
+    document.getElementById('profile-games').textContent = gameState.gamesPlayed;
+    document.getElementById('profile-level').textContent = Math.floor(gameState.gamesPlayed / 5) + 1;
   }
 
-  function statusBadgeClass(statut) {
-    if (statut === 'Placé') return 'place';
-    if (statut === 'Entretien') return 'entretien';
-    return 'en-cours';
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tab).classList.add('active');
+    event.target.classList.add('active');
+
+    if (tab === 'wardrobe') renderWardrobe();
+    if (tab === 'profile') updateDisplay();
   }
 
-  function renderCandidates() {
-    const listEl = document.getElementById('candidate-list');
-    if (candidates.length === 0) {
-      listEl.innerHTML = '<div class="empty-state">Aucun candidat pour le moment.</div>';
-      return;
+  function startGame(gameType) {
+    let result, reward;
+
+    switch(gameType) {
+      case 'memory':
+        result = Math.random() > 0.3 ? 'Bravo! Tu as trouvé toutes les paires!' : 'Essaie encore...';
+        reward = Math.random() > 0.3 ? 3 : 0;
+        break;
+      case 'spin':
+        const spinRewards = [0, 1, 2, 5, 3];
+        reward = spinRewards[Math.floor(Math.random() * spinRewards.length)];
+        result = `Tu gagnes ${reward} couronnes! 🎉`;
+        break;
+      case 'quiz':
+        result = Math.random() > 0.4 ? 'Bonne réponse!' : 'Mauvaise réponse...';
+        reward = Math.random() > 0.4 ? 4 : 0;
+        break;
+      case 'coins':
+        reward = Math.floor(Math.random() * 3) + 1;
+        result = `Tu as collecté ${reward} diamants! ✨`;
+        break;
     }
 
-    listEl.innerHTML = candidates.map(c => `
-      <div class="candidate-card">
-        <div class="avatar">${initials(c.nom)}</div>
-        <div class="candidate-info">
-          <div class="candidate-name">${c.nom}</div>
-          <div class="candidate-meta">${c.poste} · ${c.email}</div>
+    gameState.crowns += reward;
+    gameState.gamesPlayed += 1;
+    saveState();
+
+    showGameResult(gameType, result, reward);
+  }
+
+  function showGameResult(gameType, result, reward) {
+    const icons = { memory: '🧩', spin: '🎡', quiz: '❓', coins: '💰' };
+    const modal = document.getElementById('game-modal');
+    document.getElementById('modal-title').textContent = `${icons[gameType]} Résultat`;
+    document.getElementById('modal-result').textContent = result + (reward > 0 ? ` +${reward} 👑` : '');
+    modal.classList.add('show');
+  }
+
+  function closeGameModal() {
+    document.getElementById('game-modal').classList.remove('show');
+    updateDisplay();
+  }
+
+  function renderWardrobe() {
+    const grid = document.getElementById('wardrobe-grid');
+    grid.innerHTML = outfits.map(outfit => `
+      <div class="outfit-item ${gameState.ownedOutfits.includes(outfit.id) ? '' : 'locked'}">
+        <div class="outfit-status ${gameState.ownedOutfits.includes(outfit.id) ? 'owned' : ''}">
+          ${gameState.ownedOutfits.includes(outfit.id) ? '✓' : '🔒'}
         </div>
-        <span class="status-badge ${statusBadgeClass(c.statut)}">${c.statut}</span>
-        ${c.statut !== 'Placé' ? `
-          <select class="status-select" onchange="updateStatus('${c.id}', this.value)">
-            <option value="En cours" ${c.statut === 'En cours' ? 'selected' : ''}>En cours</option>
-            <option value="Entretien" ${c.statut === 'Entretien' ? 'selected' : ''}>Entretien</option>
-          </select>
-          <button class="btn-place" onclick="openModal('${c.id}')">🎯 Marquer comme placé</button>
+        <div class="outfit-icon">${outfit.icon}</div>
+        <div class="outfit-name">${outfit.name}</div>
+        <div class="outfit-cost">${outfit.cost} 👑</div>
+        ${gameState.ownedOutfits.includes(outfit.id) ? `
+          <button class="btn-equip" onclick="equipOutfit('${outfit.id}')">
+            ${gameState.equippedOutfit === outfit.id ? '✓ Équipée' : 'Équiper'}
+          </button>
         ` : `
-          <button class="btn-place placed" disabled>✅ Placé</button>
+          <button class="btn-buy" onclick="buyOutfit('${outfit.id}')" ${gameState.crowns < outfit.cost ? 'disabled' : ''}>
+            Acheter
+          </button>
         `}
       </div>
     `).join('');
   }
 
-  // ════════════════════════════════════════════════════════════
-  //  ÉCRITURE SIMPLE (changement de statut "En cours" ↔ "Entretien")
-  //  → directe Airtable. Aucune orchestration externe nécessaire.
-  // ════════════════════════════════════════════════════════════
+  function buyOutfit(outfitId) {
+    const outfit = outfits.find(o => o.id === outfitId);
+    if (!outfit) return;
 
-  async function updateStatus(candidateId, newStatus) {
-    if (typeof AIRTABLE_TOKEN === 'undefined' || AIRTABLE_TOKEN === 'COLLER_ICI_VOTRE_TOKEN_AIRTABLE') {
-      showToast('Mode démo — statut mis à jour localement uniquement', false);
-      const c = candidates.find(c => c.id === candidateId);
-      if (c) c.statut = newStatus;
-      renderCandidates();
+    if (gameState.crowns < outfit.cost) {
+      showToast('Pas assez de couronnes! 👑', true);
       return;
     }
 
-    try {
-      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}/${candidateId}`;
-      const res = await fetch(url, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ fields: { Statut: newStatus } })
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const c = candidates.find(c => c.id === candidateId);
-      if (c) c.statut = newStatus;
-      renderCandidates();
-      showToast(`Statut mis à jour : ${newStatus}`, false);
-
-    } catch (err) {
-      showToast(`Erreur : ${err.message}`, true);
-    }
+    gameState.crowns -= outfit.cost;
+    gameState.ownedOutfits.push(outfitId);
+    saveState();
+    renderWardrobe();
+    showToast(`${outfit.name} déverrouillée! ✨`, false);
   }
 
-  // ════════════════════════════════════════════════════════════
-  //  MODAL DE PLACEMENT
-  // ════════════════════════════════════════════════════════════
-
-  function openModal(candidateId) {
-    modalCandidateId = candidateId;
-    const c = candidates.find(c => c.id === candidateId);
-    document.getElementById('modal-candidate-name').textContent = `${c.nom} — ${c.poste}`;
-    document.getElementById('modal-entreprise').value = '';
-    document.getElementById('modal-date-debut').value = '';
-    document.getElementById('modal-salaire').value = '';
-    document.getElementById('modal-commission').value = '';
-    document.getElementById('modal-overlay').classList.add('show');
-  }
-
-  function closeModal() {
-    document.getElementById('modal-overlay').classList.remove('show');
-    modalCandidateId = null;
-  }
-
-  // ════════════════════════════════════════════════════════════
-  //  SEUL POINT DE CONTACT AVEC MAKE
-  //  → un événement unique doit orchestrer 4 services OAuth externes
-  //    (Google Docs, Google Calendar, Slack, Google Sheets).
-  //    C'est le seul cas où Make apporte une vraie valeur ici :
-  //    l'auth de ces 4 services est déjà configurée dans Make,
-  //    pas besoin de la coder/maintenir dans l'app.
-  // ════════════════════════════════════════════════════════════
-
-  async function confirmPlacement() {
-    const entreprise = document.getElementById('modal-entreprise').value.trim();
-    const dateDebut  = document.getElementById('modal-date-debut').value;
-    const salaire    = document.getElementById('modal-salaire').value;
-    const commission = document.getElementById('modal-commission').value;
-
-    if (!entreprise || !dateDebut || !salaire || !commission) {
-      showToast('Merci de remplir tous les champs', true);
-      return;
-    }
-
-    const c = candidates.find(c => c.id === modalCandidateId);
-    const btn = document.getElementById('btn-confirm-place');
-    btn.disabled = true;
-    btn.textContent = 'Envoi en cours…';
-
-    if (typeof MAKE_WEBHOOK_URL === 'undefined' || MAKE_WEBHOOK_URL === 'COLLER_ICI_VOTRE_URL_MAKE') {
-      showToast('Config manquante : renseignez MAKE_WEBHOOK_URL dans config.js', true);
-      btn.disabled = false;
-      btn.textContent = 'Confirmer le placement';
-      return;
-    }
-
-    const payload = {
-      candidat_id:        c.id,
-      candidat_nom:       c.nom,
-      candidat_email:     c.email,
-      poste:               c.poste,
-      entreprise_cliente: entreprise,
-      date_debut:         dateDebut,
-      salaire_annuel:     parseFloat(salaire),
-      montant_commission: parseFloat(commission),
-      date_placement:     new Date().toISOString()
-    };
-
-    try {
-      const res = await fetch(MAKE_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok && res.status !== 200) throw new Error(`HTTP ${res.status}`);
-
-      // Reflet visuel local — le statut définitif "Placé" est aussi écrit
-      // par Make dans Airtable (module 2 du scénario, voir README)
-      c.statut = 'Placé';
-      renderCandidates();
-      closeModal();
-      showToast(`✅ ${c.nom} marqué comme placé — contrat, calendrier, Slack et tracker en cours de création`, false);
-
-    } catch (err) {
-      showToast(`❌ Erreur : ${err.message}`, true);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Confirmer le placement';
-    }
+  function equipOutfit(outfitId) {
+    gameState.equippedOutfit = outfitId;
+    const outfit = outfits.find(o => o.id === outfitId);
+    document.getElementById('profile-avatar').textContent = outfit.icon;
+    saveState();
+    renderWardrobe();
+    showToast(`${outfit.name} équipée! 👑`, false);
   }
 
   function showToast(msg, isError) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.className = 'toast show' + (isError ? ' error' : '');
-    setTimeout(() => t.classList.remove('show'), 4500);
+    setTimeout(() => t.classList.remove('show'), 3000);
   }
 
-  // ════════════════════════════════════════════════════════════
-  //  Données de démo — utilisées si config.js n'est pas encore rempli
-  // ════════════════════════════════════════════════════════════
-  const DEMO_CANDIDATES = [
-    { id: 'demo1', nom: 'Julien Rocher',  poste: 'Chef de projet digital', email: 'j.rocher@mail.fr',   statut: 'Entretien' },
-    { id: 'demo2', nom: 'Amina Belkacem', poste: 'Consultante RH',         email: 'a.belkacem@mail.fr', statut: 'En cours' },
-    { id: 'demo3', nom: 'Thomas Weiss',   poste: 'Product Manager',        email: 't.weiss@mail.fr',    statut: 'En cours' }
-  ];
-
-  loadCandidates();
+  // Initialize
+  updateDisplay();
+  renderWardrobe();
 </script>
 
 </body>
