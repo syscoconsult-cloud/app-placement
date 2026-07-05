@@ -116,43 +116,55 @@ See `docs/TESTING.md` for:
 
 ---
 
-## Phase 2.5: Notaire + Government Data
+## Phase 2.5: Notaire + Government + INSEE + Rental Data
 
 ### Status: COMPLETED ✅
 
-Enriches market analysis with official notaire (PERVAL) and government reference prices.
+Enriches market analysis with official sources: notaire prices, demographics, geolocation, rental data.
 
 ### Features
-- ✅ Import PERVAL (Notaire official prices) from data.gouv.fr
-- ✅ Import other government real estate datasets
-- ✅ Enrich zone_stats with consolidated pricing
-- ✅ Data enrichment layer (link properties to zone statistics)
-- ✅ Price comparison tool (DVF vs Notaire vs PAP scraper)
-- ✅ Scoring engine foundations
+- ✅ **PERVAL** — Notaire official price indices
+- ✅ **INSEE** — Demographics, employment, income, urbanization
+- ✅ **RDNA/BAN** — Geolocation, proximity to transport/highways/airports
+- ✅ **ANIL/CLAMEUR** — Rental prices, rental evolution
+- ✅ **Data enrichment** — Link properties to complete zone profiles
+- ✅ **Price comparison** — DVF vs Notaire vs PAP scraper
+- ✅ **Unified view** — `zone_complete_profile` SQL view
 
 ### Running the Imports
 
-**Import DVF (already done in Phase 1):**
+**One-time: Import all data sources**
 ```bash
-npm run import-dvf
+npm run import-all-data
+```
+This imports:
+- DVF transactions (Phase 1)
+- PERVAL notaire prices
+- INSEE demographics
+- ANIL rental data
+- CLAMEUR rental evolution
+
+**Single sources (if needed)**
+```bash
+npm run import-dvf          # DVF only
+npm run import-notaire      # PERVAL only
 ```
 
-**Import Notaire PERVAL + government data:**
+**Validation & analysis**
 ```bash
-npm run import-notaire
-```
-
-**Compare prices across all sources:**
-```bash
-npm run compare-prices
+npm run compare-prices      # Price source comparison
 ```
 
 ### Key Files
-- `lib/data-sources/notaire-importer.ts` — PERVAL + government data import
+- `lib/data-sources/notaire-importer.ts` — PERVAL import
+- `lib/data-sources/insee-importer.ts` — INSEE demographics + geolocation
+- `lib/data-sources/rental-importer.ts` — ANIL/CLAMEUR rental data
 - `lib/data-enrichment.ts` — Property enrichment with zone data
-- `scripts/import-notaire-data.ts` — CLI for notaire import
-- `scripts/compare-price-sources.ts` — Price comparison report
-- `docs/DATA_SOURCES.md` — Complete data source documentation
+- `scripts/import-all-data.ts` — Master import script (all sources)
+- `scripts/compare-price-sources.ts` — Price validation report
+- `supabase/migrations/002_add_rental_and_census_data.sql` — Enhanced schema
+- `docs/DATA_SOURCES.md` — Data source overview
+- `docs/ENRICHED_DATA.md` — Complete enriched data guide
 - `docs/SCORING_GUIDE.md` — Deal scoring methodology
 
 ### What It Does

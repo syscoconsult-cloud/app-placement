@@ -73,31 +73,41 @@ Personal web application for real estate sourcing and investment opportunity ana
 
 ## Development Roadmap
 
-### Phase 1: DVF Module (START HERE)
-1. **Import script**: Download & parse DVF files from data.gouv.fr (configurable departments)
-2. **Zone stats**: Calculate & upsert aggregates (avg/median price/m², 3-year trend by INSEE code)
-3. **Validation**: Manual spot-check of imported data
+### Phase 1: DVF Module ✅
+1. **Import script**: Download & parse DVF files from data.gouv.fr
+2. **Zone stats**: Calculate aggregates (avg/median price/m², 3-year trend)
+3. **Validation**: Spot-check imported data
 
-### Phase 2: Scraper (Single Source)
-1. Start with PAP (less aggressive anti-bot than Leboncoin)
-2. Rate-limit reasonably; respect robots.txt
-3. Deduplicate by source URL
-4. Mark `is_active = false` for stale listings (daily cron)
+### Phase 2: PAP Scraper ✅
+1. Rate-limited HTML scraping (3s between requests)
+2. Deduplication by source URL
+3. Stale listing detection (7-day threshold)
 
-### Phase 3: Scoring Engine
-1. SQL function computing: discount, rental yield, zone dynamics, other factors
-2. Aggregate into `property_scores` for each active property × active profile
+### Phase 2.5: Notaire + Government + INSEE + Rental Data ✅
+1. **PERVAL**: Notaire official price indices
+2. **INSEE**: Demographics, employment, income
+3. **RDNA/BAN**: Geolocation, proximity metrics
+4. **ANIL/CLAMEUR**: Rental prices & evolution
+5. **Data enrichment**: Link properties to zone statistics
+6. **Unified view**: `zone_complete_profile` combining all sources
+
+### Phase 3: Scoring Engine (NEXT)
+1. SQL function computing: discount, rental yield, zone dynamics, quality metrics
+2. Incorporate all enrichment data
+3. Aggregate into `property_scores` per property × profile
+4. Zone quality scoring (0-100)
 
 ### Phase 4: Alert System
-1. Daily job: identify high-scoring properties, send email via Resend
-2. Log sent alerts to prevent duplicates
+1. Daily job: identify high-scoring properties
+2. Email via Resend with deal details
+3. Log sent alerts to prevent duplicates
 
 ### Phase 5: Frontend (Next.js Dashboard)
 1. Auth (Supabase)
-2. Property list + filters
-3. Detail view + map (Mapbox/Leaflet)
+2. Property list + filters + map
+3. Detail view with enriched data
 4. Scoring weights configuration
-5. Alert history
+5. Alert history & zone analytics
 
 ---
 

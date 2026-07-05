@@ -12,6 +12,7 @@
     "scrape-pap": "tsx scripts/scrape-pap.ts",
     "scrape-pap:dry": "tsx scripts/scrape-pap.ts --dry-run",
     "import-notaire": "tsx scripts/import-notaire-data.ts",
+    "import-all-data": "tsx scripts/import-all-data.ts",
     "compare-prices": "tsx scripts/compare-price-sources.ts"
   },
   "dependencies": {
