@@ -70,14 +70,60 @@ Import French property transaction data (DVF) to establish market baseline for z
 
 ---
 
+## Phase 2: PAP Scraper
+
+### Status: IN DEVELOPMENT
+Scrapes PAP (De Particulier à Particulier) property listings with respectful rate-limiting.
+
+### Running the Scraper
+
+**Dry run** (test without database writes):
+```bash
+npm run scrape-pap:dry
+```
+
+**Live scrape** (Paris apartments + houses):
+```bash
+npm run scrape-pap
+```
+
+**Custom locations**:
+```bash
+tsx scripts/scrape-pap.ts --location "Reims" --location "Lyon"
+```
+
+### Key Features
+- ✅ Rate-limited requests (3s between requests)
+- ✅ HTML parsing with Cheerio
+- ✅ Deduplication by source URL
+- ✅ Automatic stale detection (7-day threshold)
+- ✅ Structured property extraction (price, surface, city, DPE, etc.)
+
+### Files
+- `lib/scrapers/base-scraper.ts` — Abstract base with rate-limiting
+- `lib/scrapers/pap-scraper.ts` — PAP-specific HTML parsing
+- `lib/property-service.ts` — Database operations (upsert, mark stale)
+- `scripts/scrape-pap.ts` — CLI entry point
+- `docs/SCRAPING.md` — Architecture & troubleshooting
+- `docs/TESTING.md` — Testing & validation guide
+
+### Testing & Validation
+See `docs/TESTING.md` for:
+- Pre-scraping checklist
+- Dry-run validation
+- Database verification
+- Common failure debugging
+
+---
+
 ## Next Phases
 
-### Phase 2: Scraper (Future)
-- Start with single source (PAP)
-- Rate-limit requests; respect robots.txt
-- Mark stale listings as inactive
+### Phase 3: Add More Scrapers (Future)
+- SeLoger scraper (copy PAP structure, customize selectors)
+- Leboncoin scraper
+- Rotate between sources to avoid detection
 
-### Phase 3: Scoring Engine (Future)
+### Phase 4: Scoring Engine (Future)
 - Compute discount, yield, zone dynamics, other factors
 - Store in `property_scores`
 
