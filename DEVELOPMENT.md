@@ -72,7 +72,7 @@ Import French property transaction data (DVF) to establish market baseline for z
 
 ## Phase 2: PAP Scraper
 
-### Status: IN DEVELOPMENT
+### Status: COMPLETED ✅
 Scrapes PAP (De Particulier à Particulier) property listings with respectful rate-limiting.
 
 ### Running the Scraper
@@ -113,6 +113,68 @@ See `docs/TESTING.md` for:
 - Dry-run validation
 - Database verification
 - Common failure debugging
+
+---
+
+## Phase 2.5: Notaire + Government Data
+
+### Status: COMPLETED ✅
+
+Enriches market analysis with official notaire (PERVAL) and government reference prices.
+
+### Features
+- ✅ Import PERVAL (Notaire official prices) from data.gouv.fr
+- ✅ Import other government real estate datasets
+- ✅ Enrich zone_stats with consolidated pricing
+- ✅ Data enrichment layer (link properties to zone statistics)
+- ✅ Price comparison tool (DVF vs Notaire vs PAP scraper)
+- ✅ Scoring engine foundations
+
+### Running the Imports
+
+**Import DVF (already done in Phase 1):**
+```bash
+npm run import-dvf
+```
+
+**Import Notaire PERVAL + government data:**
+```bash
+npm run import-notaire
+```
+
+**Compare prices across all sources:**
+```bash
+npm run compare-prices
+```
+
+### Key Files
+- `lib/data-sources/notaire-importer.ts` — PERVAL + government data import
+- `lib/data-enrichment.ts` — Property enrichment with zone data
+- `scripts/import-notaire-data.ts` — CLI for notaire import
+- `scripts/compare-price-sources.ts` — Price comparison report
+- `docs/DATA_SOURCES.md` — Complete data source documentation
+- `docs/SCORING_GUIDE.md` — Deal scoring methodology
+
+### What It Does
+
+1. **Import PERVAL** — Official notaire price indices by zone
+2. **Import Government Data** — Other real estate datasets from data.gouv.fr
+3. **Enrich Zone Stats** — Consolidate prices from multiple sources
+4. **Link Properties to Zones** — Calculate discount vs market price
+5. **Support Scoring** — Provide reference data for deal scoring
+
+### Example
+```bash
+npm run import-notaire
+# ✅ Imported 2,856 zone statistics from PERVAL
+
+npm run compare-prices
+# 📊 Paris
+#   DVF Avg: €9,500/m²
+#   PERVAL: €9,480/m²
+#   PAP Avg: €11,200/m² (asking prices)
+#   Gap: +17.9% (typical, PAP asking vs sold)
+```
 
 ---
 

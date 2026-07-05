@@ -10,7 +10,9 @@
     "type-check": "tsc --noEmit",
     "import-dvf": "tsx scripts/import-dvf.ts",
     "scrape-pap": "tsx scripts/scrape-pap.ts",
-    "scrape-pap:dry": "tsx scripts/scrape-pap.ts --dry-run"
+    "scrape-pap:dry": "tsx scripts/scrape-pap.ts --dry-run",
+    "import-notaire": "tsx scripts/import-notaire-data.ts",
+    "compare-prices": "tsx scripts/compare-price-sources.ts"
   },
   "dependencies": {
     "react": "^18.3.1",
