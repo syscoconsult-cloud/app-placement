@@ -1,0 +1,154 @@
+# Development Guide — Real Estate Sourcing App
+
+## Project Setup
+
+### Prerequisites
+- Node.js 18+ and npm
+- Supabase account and project
+- GitHub access
+
+### Local Setup
+
+1. **Clone and install**
+   ```bash
+   git clone https://github.com/syscoconsult-cloud/app-placement.git
+   cd app-placement
+   npm install
+   ```
+
+2. **Configure environment**
+   ```bash
+   cp .env.example .env.local
+   ```
+   Fill in Supabase credentials:
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Public anon key (safe for browser)
+   - `SUPABASE_SERVICE_ROLE_KEY`: Service role key (keep secret, server-only)
+
+3. **Apply database migrations**
+   - Via Supabase dashboard: Go to SQL Editor, paste content of `supabase/migrations/001_init_dvf_schema.sql`
+   - Or via Supabase CLI: `supabase db push`
+
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
+   Open http://localhost:3000
+
+---
+
+## Phase 1: DVF Import Module
+
+### Goal
+Import French property transaction data (DVF) to establish market baseline for zones.
+
+### Steps Completed
+- ✅ Database schema created (`dvf_transactions`, `zone_stats`)
+- ✅ DVF import script scaffolded (`scripts/import-dvf.ts`)
+- ✅ Project structure initialized (Next.js 14 + Supabase)
+
+### Next Steps
+
+1. **Test DVF import locally**
+   ```bash
+   # First, make sure .env.local has SUPABASE_SERVICE_ROLE_KEY set
+   npm run import-dvf
+   ```
+   - Downloads DVF CSV files for configured departments (default: 75 — Paris, 51 — Reims)
+   - Parses and inserts into `dvf_transactions`
+   - Computes zone statistics (average, median, 3-year trend)
+
+2. **Validate imported data**
+   - Query Supabase dashboard: `SELECT * FROM dvf_transactions LIMIT 10`
+   - Check zone stats: `SELECT * FROM zone_stats`
+   - Compare results with public data sources
+
+3. **Troubleshooting**
+   - If CSV parsing fails, check DVF file format (header row expected)
+   - If Supabase insert fails, verify `SUPABASE_SERVICE_ROLE_KEY` permissions
+   - Check logs: `npm run import-dvf 2>&1 | tee import.log`
+
+---
+
+## Next Phases
+
+### Phase 2: Scraper (Future)
+- Start with single source (PAP)
+- Rate-limit requests; respect robots.txt
+- Mark stale listings as inactive
+
+### Phase 3: Scoring Engine (Future)
+- Compute discount, yield, zone dynamics, other factors
+- Store in `property_scores`
+
+### Phase 4: Alert System (Future)
+- Daily job to identify high-scoring properties
+- Send email via Resend
+
+### Phase 5: Frontend (Future)
+- Dashboard with property list, filters, detail view
+- Configuration UI for scoring weights
+- Alert history viewer
+
+---
+
+## Common Commands
+
+```bash
+npm run dev          # Start dev server
+npm run build        # Build for production
+npm run start        # Run production build
+npm run lint         # Run ESLint
+npm run type-check   # Run TypeScript type check
+npm run import-dvf   # Run DVF import script
+```
+
+---
+
+## Deployment
+
+### Frontend (Vercel)
+```bash
+git push origin claude/real-estate-sourcing-app-ym7as5
+# Vercel auto-deploys on push (if configured)
+```
+
+### Database (Supabase)
+- Migrations applied manually via dashboard or CLI
+- Environment variables set in Vercel project settings
+
+---
+
+## Project Structure
+
+```
+app-placement/
+├── app/                      # Next.js App Router pages
+│   ├── layout.tsx
+│   ├── page.tsx
+│   └── globals.css
+├── components/               # React components (future)
+├── lib/                       # Utilities
+│   └── supabase.ts          # Supabase client config
+├── scripts/
+│   └── import-dvf.ts        # DVF import script
+├── supabase/
+│   └── migrations/
+│       └── 001_init_dvf_schema.sql
+├── public/                   # Static assets (future)
+├── .env.example              # Environment template
+├── CLAUDE.md                 # Project brief
+├── DEVELOPMENT.md            # This file
+├── next.config.js
+├── package.json
+├── tailwind.config.ts
+└── tsconfig.json
+```
+
+---
+
+## Notes
+
+- All work on branch: `claude/real-estate-sourcing-app-ym7as5`
+- Code review & testing before each commit
+- Small, focused commits with clear messages

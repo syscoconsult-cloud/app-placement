@@ -1,0 +1,9 @@
+{
+  "project_id": "your-project-id",
+  "db": {
+    "major_version": 15
+  },
+  "api": {
+    "enabled": true
+  }
+}
