@@ -1,199 +1,221 @@
-# app-placement — Suivi candidats + fan-out placement
+# 📋 Lettres de Mission — Générateur OEC/RGPD
 
-Application de suivi des candidats pour Marie Fontaine (RH). Le point clé de
-ce projet : **l'app ne passe par Make que pour UNE seule action** — le reste
-se fait en direct avec Airtable.
+Application web pour cabinet expertise comptable & commissaires aux comptes. Automatise la génération, signature électronique et archivage de lettres de mission avec conformité **OEC + RGPD**.
 
----
+## 🎯 Workflow
 
-## Pourquoi cette architecture (et pas "tout dans Make")
+```
+1. Prospect (Notion) → 2. Saisie formulaire
+   ↓
+3. Upload docs (pièce ID + KBIS) → 4. Validation client-side
+   ↓
+5. Génération PDF LDM (OEC template) → 6. Prévisualisation
+   ↓
+7. Envoi JeSigneExpert → 8. Signature électronique
+   ↓
+9. Archivage OneDrive + Pennylane
+```
 
-| Action | Chemin | Pourquoi |
-|---|---|---|
-| Lire la liste des candidats | **App → Airtable direct** | Une lecture n'a besoin d'aucune orchestration. Passer par Make ajouterait une latence et un point de panne sans aucun bénéfice. |
-| Changer un statut simple (En cours → Entretien) | **App → Airtable direct** | Une seule écriture, un seul service. Make n'apporte rien ici. |
-| Marquer un candidat "Placé" | **App → Make → 4 services** | **Le seul cas qui justifie Make.** Un événement unique doit déclencher 4 actions dans 4 services OAuth différents (Google Docs, Google Calendar, Slack, Google Sheets). Coder et maintenir ces 4 authentifications OAuth (refresh tokens, scopes, gestion d'erreur par service) en Netlify Function représenterait plusieurs jours de dev. Make a ces connecteurs déjà prêts — l'auth se fait en 2 clics dans son interface, pas en code. |
+## 🔐 Conformité
 
-**Le critère à retenir** : Make se justifie quand une seule action doit
-orchestrer plusieurs services externes déjà pré-connectés (OAuth), pas
-pour une simple lecture/écriture vers un seul outil.
+- **OEC** : Template officiel + archivage 7 ans
+- **RGPD** : Minimisation données + audit trail + chiffrement TLS
+- **Pièce identité** : Lue OneDrive, jamais stockée app (confidentialité max)
 
----
+## 🚀 Setup Local
 
-## Stack
-
-- **App** : HTML/CSS/JS vanilla, déployée sur Netlify
-- **Lecture/écriture simple** : Airtable REST API (appel direct depuis le navigateur)
-- **Orchestration placement** : Make.com (1 scénario, 4 branches en parallèle)
-- **Services fan-out** : Google Docs, Google Calendar, Slack, Google Sheets
-
----
-
-## Setup local
+### 1. Cloner & installer
 
 ```bash
-git clone https://github.com/[votre-compte]/app-placement
+git clone https://github.com/syscoconsult-cloud/app-placement.git
 cd app-placement
-cp config.example.js config.js
-# Renseigner AIRTABLE_TOKEN, AIRTABLE_BASE_ID, MAKE_WEBHOOK_URL dans config.js
+cp config.example.js src/js/config.js
 ```
 
-Sans config.js rempli, l'app tourne en mode démo avec 3 candidats fictifs —
-pratique pour tester l'interface avant d'avoir branché Airtable et Make.
+### 2. Remplir config.js
 
----
-
-## Structure Airtable
-
-**Table : Candidats**
-
-| Champ | Type | Notes |
-|---|---|---|
-| Nom | Text | |
-| Email | Email | |
-| Poste | Text | |
-| Statut | Single select | En cours / Entretien / Placé |
-| Entreprise_cliente | Text | Rempli au placement (par Make) |
-| Date_debut_mission | Date | Rempli au placement (par Make) |
-| Salaire_annuel | Number | Rempli au placement (par Make) |
-| Montant_commission | Number | Rempli au placement (par Make) |
-| Date_placement | Date | Rempli au placement (par Make) |
-| Contrat_doc_url | URL | Rempli par Make — lien du contrat généré |
-
-> Remarque : l'app écrit directement le champ `Statut` pour "En cours" ↔
-> "Entretien". Elle n'écrit PAS "Placé" ni les champs de placement — c'est
-> Make qui le fait, après avoir orchestré les 4 services. Ça évite une
-> désynchronisation entre "ce que l'app pense" et "ce qui a vraiment été fait".
-
----
-
-## Token Airtable — portée à limiter
-
-Créer un **Personal Access Token** (pas la clé API legacy) sur
-[airtable.com/create/tokens](https://airtable.com/create/tokens) avec :
-- Scope : `data.records:read` + `data.records:write`
-- Accès limité à **cette base uniquement**, pas "toutes les bases"
-
-Ce token est visible côté client (dans le code source du navigateur) — la
-limitation de portée est donc la seule protection réelle en l'absence de
-backend. Pour une app avec des données plus sensibles, préférer un proxy
-via Netlify Function qui garde le token côté serveur.
-
----
-
-## Make — Scénario "Placement candidat"
-
-Un seul scénario, déclenché uniquement par le clic "Marquer comme placé".
-
-### [1] Webhooks → Custom webhook
-
-- Nom : `placement-candidat`
-- Copier l'URL générée → la coller dans `MAKE_WEBHOOK_URL` (config.js)
-- Données reçues : `candidat_id`, `candidat_nom`, `candidat_email`, `poste`,
-  `entreprise_cliente`, `date_debut`, `salaire_annuel`,
-  `montant_commission`, `date_placement`
-
-### [2] Router — 4 branches en parallèle
-
-Ajouter un module **Router** juste après le webhook. Par défaut, Make
-exécute **toutes les branches d'un router** (sauf si vous ajoutez des
-filtres différenciants) — ici on veut justement que les 4 partent en même
-temps.
-
----
-
-#### BRANCHE A — Google Docs : créer le contrat
-
-**Module : Google Docs → Create a Document from a Template**
-- Template Doc ID : [ID de votre modèle de contrat, préparé en amont avec
-  des variables du type `{{NOM_CANDIDAT}}`, `{{POSTE}}`, `{{ENTREPRISE}}`,
-  `{{SALAIRE}}`, `{{DATE_DEBUT}}`]
-- Variables à remplacer :
-  - `NOM_CANDIDAT` → `{{1.candidat_nom}}`
-  - `POSTE` → `{{1.poste}}`
-  - `ENTREPRISE` → `{{1.entreprise_cliente}}`
-  - `SALAIRE` → `{{1.salaire_annuel}}`
-  - `DATE_DEBUT` → `{{1.date_debut}}`
-- Dossier de destination : `/Contrats/{{1.entreprise_cliente}}/`
-- Récupérer l'URL du doc créé en sortie → utilisée en [6]
-
----
-
-#### BRANCHE B — Google Calendar : événement d'onboarding
-
-**Module : Google Calendar → Create an Event**
-- Calendrier : celui de Marie
-- Titre : `Onboarding — {{1.candidat_nom}} chez {{1.entreprise_cliente}}`
-- Date de début : `{{1.date_debut}}`
-- Durée : 1h
-- Description : `Premier jour de mission pour {{1.candidat_nom}} ({{1.poste}}). Contact : {{1.candidat_email}}`
-- Invités : ajouter `{{1.candidat_email}}` si pertinent
-
----
-
-#### BRANCHE C — Slack : notification équipe
-
-**Module : Slack → Create a Message**
-- Canal : `#placements`
-- Message :
-```
-🎉 Nouveau placement !
-*{{1.candidat_nom}}* → {{1.poste}} chez *{{1.entreprise_cliente}}*
-Début de mission : {{1.date_debut}}
-Commission : {{1.montant_commission}} €
+```javascript
+window.APP_CONFIG = {
+  notion: {
+    token: "ntn_...", // https://notion.com/my-integrations
+    databaseId: "...",
+  },
+  onedrive: {
+    clientId: "...",
+    clientSecret: "...",
+    tenantId: "...",
+    cabinetFolderId: "...",
+  },
+  jesigneexpert: {
+    apiKey: "...",
+    webhookSecret: "...",
+  },
+  demo: false, // true = données fictives pour test UI
+};
 ```
 
+### 3. Lancer localement
+
+**Sans backend** (demo mode) :
+```bash
+open src/index.html
+```
+
+**Avec Netlify Functions** :
+```bash
+npm install -g netlify-cli
+netlify dev
+# http://localhost:8888
+```
+
+## 📁 Structure
+
+```
+src/
+  ├── index.html                 # Dashboard missions
+  ├── new-mission.html          # Formulaires étape 1-2
+  ├── preview-ldm.html          # Prévisualisation LDM
+  ├── tracking.html             # Suivi signature
+  ├── js/
+  │   ├── config.js             # Config API keys
+  │   ├── api-notion.js         # Notion API
+  │   ├── validation.js         # Validation docs
+  │   └── audit.js              # Audit logging
+  └── css/                       # Styles (à ajouter)
+
+functions/
+  ├── generate-ldm.js           # Génération PDF
+  ├── send-to-signature.js      # Envoi JeSigneExpert
+  ├── signature-status.js       # Vérifier statut
+  ├── archive-mission.js        # Archivage
+  ├── audit-log.js              # Logs OneDrive
+  └── download-signed-ldm.js    # Télécharger LDM signée
+```
+
+## 🔧 API Endpoints (Netlify Functions)
+
+| Function | Méthode | Purpose |
+|----------|---------|---------|
+| `/generate-ldm` | POST | Générer PDF LDM (variables substituées) |
+| `/send-to-signature` | POST | Envoyer à JeSigneExpert |
+| `/signature-status` | GET | Récupérer statut signature (poll) |
+| `/archive-mission` | POST | Archiver OneDrive + Pennylane |
+| `/audit-log` | POST | Enregistrer logs audit |
+| `/download-signed-ldm` | GET | Télécharger LDM signée |
+
+## 🔗 Intégrations Tierces
+
+### Notion
+- Lire prospects + infos mission
+- **Scope** : database read/write
+- **Token** : Personal Access Token (https://notion.com/my-integrations)
+
+### JeSigneExpert
+- Signature électronique (eIDAS compliant)
+- **API** : REST + webhooks
+- **Webhook** : POST `/functions/webhook-jesigneexpert` (events signature)
+
+### OneDrive
+- Stockage docs + LDM + audit logs
+- **OAuth2** : Microsoft Graph API
+- **Permissions** : files.readwrite.all
+
+### Pennylane
+- Création dossier mission (futur, actuellement manuel)
+- **Status** : API à développer
+
+## 🧪 Test Mode
+
+Avec `config.js` → `demo: true` :
+- ✅ UI tourne sans API réelles
+- ✅ Données fictives (3 missions démo)
+- ✅ Génération PDF locale
+- ✅ Parfait pour test UI avant API setup
+
+## 📝 Development
+
+### Ajouter une page
+
+1. Créer `src/[new-page].html`
+2. Importer JS dans `<script src="js/..."></script>`
+3. Ajouter nav dans `src/index.html`
+
+### Ajouter une Function
+
+1. Créer `functions/[name].js` (exports.handler)
+2. Variables env dans `netlify.toml`
+3. Appeler : `fetch('/.netlify/functions/[name]')`
+
+### Tests Functions locales
+
+```bash
+netlify dev
+# Function logs via `netlify dev` output
+```
+
+## 🚀 Déploiement Netlify
+
+1. Push vers branch `claude/mission-letter-app-sgcti3`
+2. Netlify auto-deploy (webhook GitHub)
+3. Configurer env vars dans Netlify UI (Settings → Build & Deploy → Environment)
+
+Ou manuel :
+```bash
+netlify deploy --prod
+```
+
+## 🔒 Sécurité
+
+### Données sensibles
+- ❌ Jamais committer `config.js`
+- ✅ Utiliser `.env` → Netlify UI environment variables
+- ✅ Tokens limités en portée (single database, single folder)
+
+### RGPD/OEC
+- ✅ Pièce identité : lue OneDrive, pas conservée app
+- ✅ Audit trail : OneDrive horodaté
+- ✅ TLS 1.3 : en transit
+- ✅ E2E chiffrement : OneDrive au repos
+- ✅ Rétention : 7 ans, puis suppression
+
+### CSP Headers
+- Default-src `'self'` (localhost)
+- Pas de tracking (Google Analytics, etc.)
+- Pas de cookies
+
+## 📚 Documentation Complète
+
+- **CLAUDE.md** : Architecture + development guide
+- **docs/API.md** : Détail endpoints
+- **docs/RGPD.md** : Politique confidentialité
+- **docs/OEC.md** : Conformité Ordre
+
+## 🤝 Contributing
+
+1. Feature branch : `git checkout -b feature/xyz`
+2. Développer + tester
+3. Commit messages clairs
+4. PR vers `claude/mission-letter-app-sgcti3`
+
+## ❓ FAQ
+
+**Q: Où sont stockées les données ?**
+A: OneDrive cabinet uniquement. Pièce identité lue mais pas conservée app.
+
+**Q: Combien coûte JeSigneExpert ?**
+A: Variable selon volume. Consulter https://www.jesigneexpert.com/tarifs
+
+**Q: Peut-on utiliser un autre service de signature ?**
+A: Oui. Remplacer intégration JeSigneExpert par DocuSign/Yousign/etc. (adapter functions/)
+
+**Q: Quand supprimer les dossiers archivés ?**
+A: Après 7 ans légalement. Automatiser via script + cron.
+
+**Q: Peut-on signer multipartite ?**
+A: Oui, modifier `send-to-signature.js` pour ajouter multiples signataires.
+
 ---
 
-#### BRANCHE D — Google Sheets : tracker commissions
-
-**Module : Google Sheets → Add a Row**
-- Spreadsheet : "Tracker Commissions 2026"
-- Feuille : "Placements"
-- Colonnes à mapper :
-  - Date → `{{1.date_placement}}`
-  - Candidat → `{{1.candidat_nom}}`
-  - Entreprise → `{{1.entreprise_cliente}}`
-  - Salaire → `{{1.salaire_annuel}}`
-  - Commission → `{{1.montant_commission}}`
-
----
-
-### [6] Après les 4 branches — Airtable : Update a record (hors router, à la suite)
-
-Une fois les 4 branches terminées, ajouter un module final (en dehors du
-router, connecté après) :
-
-**Module : Airtable → Update a record**
-- Record ID : `{{1.candidat_id}}`
-- Champs à mettre à jour :
-  - Statut → `Placé`
-  - Entreprise_cliente → `{{1.entreprise_cliente}}`
-  - Date_debut_mission → `{{1.date_debut}}`
-  - Salaire_annuel → `{{1.salaire_annuel}}`
-  - Montant_commission → `{{1.montant_commission}}`
-  - Date_placement → `{{1.date_placement}}`
-  - Contrat_doc_url → `{{2.url}}` (sortie de la branche A, Google Docs)
-
-> C'est ce module qui synchronise enfin l'Airtable que l'app relit ensuite
-> — cohérent avec la règle : Make est responsable d'écrire "Placé", pas l'app.
-
----
-
-## Déploiement Netlify
-
-1. Pusher le repo sur GitHub (config.js reste local, jamais commité)
-2. Netlify → "Add new site" → "Import from Git"
-3. Build settings : vide (pas de build step, HTML statique)
-4. Deploy
-
----
-
-## Point de vigilance pédagogique
-
-Ce projet illustre volontairement **la limite** entre ce qui doit passer
-par Make et ce qui ne doit pas y passer. Si un apprenant demande "pourquoi
-on ne fait pas aussi passer la lecture de la liste par Make ?", la réponse
-est : **ça marcherait, mais ce serait plus lent et plus fragile pour zéro
-bénéfice** — Make n'ajoute de la valeur que là où il orchestre plusieurs
-services externes en une seule fois.
+**Version** : 0.1.0 (MVP)  
+**License** : Proprietary  
+**Maintainer** : [Cabinet Name]
