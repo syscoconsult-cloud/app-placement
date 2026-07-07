@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nouvelle Mission — Lettres de Mission</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="js/config.js"></script>
+  <script src="js/api-notion.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/audit.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0A1628; --teal: #0D9488; --red: #DC2626; --green: #16A34A;
+      --yellow: #F59E0B; --bg: #F1F5F9; --white: #FFFFFF; --text: #0F172A;
+      --muted: #64748B; --border: #E2E8F0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--navy);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .app-logo {
+      width: 36px;
+      height: 36px;
+      background: var(--teal);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    header a {
+      margin-left: auto;
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      font-size: 0.84rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    header a:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    main {
+      max-width: 800px;
+      margin: 32px auto;
+      padding: 0 20px 60px;
+    }
+
+    .form-section {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    .form-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.84rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    .help-text {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="date"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      color: var(--text);
+      transition: border-color 0.15s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 640px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Upload zone */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: rgba(13, 148, 136, 0.02);
+    }
+
+    .upload-zone:hover {
+      border-color: var(--teal);
+      background: rgba(13, 148, 136, 0.05);
+    }
+
+    .upload-zone.active {
+      border-color: var(--teal);
+      background: rgba(13, 148, 136, 0.1);
+    }
+
+    .upload-zone-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .upload-zone-text {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .upload-zone-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    .file-list {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px;
+      background: #F0FDF4;
+      border: 1px solid #BBF7D0;
+      border-radius: 6px;
+      font-size: 0.84rem;
+    }
+
+    .file-item.error {
+      background: #FEE2E2;
+      border-color: #FECACA;
+    }
+
+    .file-item-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-item-size {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-left: 8px;
+    }
+
+    .file-item-remove {
+      background: transparent;
+      border: none;
+      color: var(--red);
+      cursor: pointer;
+      font-size: 0.84rem;
+      margin-left: 8px;
+      padding: 0 4px;
+      text-decoration: underline;
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.84rem;
+    }
+
+    .alert.error {
+      background: #FEE2E2;
+      border-left: 4px solid var(--red);
+      color: #991B1B;
+    }
+
+    .alert.success {
+      background: #F0FDF4;
+      border-left: 4px solid var(--green);
+      color: #166534;
+    }
+
+    .alert.info {
+      background: #DBEAFE;
+      border-left: 4px solid #3B82F6;
+      color: #1E40AF;
+    }
+
+    /* Buttons */
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      justify-content: space-between;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--teal);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0B7A70;
+    }
+
+    .btn-primary:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--teal);
+      border: 1px solid var(--teal);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(13, 148, 136, 0.05);
+    }
+
+    .step-indicator {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+      justify-content: center;
+    }
+
+    .step {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      background: var(--border);
+      color: var(--muted);
+    }
+
+    .step.active {
+      background: var(--teal);
+      color: white;
+    }
+
+    .step.completed {
+      background: var(--green);
+      color: white;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="app-logo">📋</div>
+    <h1>Nouvelle Mission</h1>
+    <a href="index.html">← Retour</a>
+  </header>
+
+  <main>
+    <div class="step-indicator">
+      <div class="step active" id="step1">1</div>
+      <div class="step" id="step2">2</div>
+      <div class="step" id="step3">3</div>
+    </div>
+
+    <!-- Étape 1 : Saisie prospect -->
+    <div id="formStep1" class="form-section">
+      <h2 class="form-title">Étape 1 — Informations prospect</h2>
+
+      <div class="form-group">
+        <label for="prospectId">Prospect (depuis Notion)</label>
+        <select id="prospectId" onchange="onProspectChange()">
+          <option value="">Sélectionner un prospect...</option>
+        </select>
+        <p class="help-text">Si le prospect n'existe pas, créez-le d'abord dans Notion</p>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="nom">Nom du prospect</label>
+          <input type="text" id="nom" placeholder="SARL Acme Inc" required />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="contact@acme.fr" required />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="missionType">Type de mission</label>
+          <select id="missionType" required>
+            <option value="">Sélectionner...</option>
+            <option value="expertise-comptable">Expertise Comptable</option>
+            <option value="commissaire-comptes">Commissaire aux Comptes (CAC)</option>
+            <option value="audit">Audit</option>
+            <option value="conseil">Conseil</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="organisation">Type organisation</label>
+          <select id="organisation" required>
+            <option value="">Sélectionner...</option>
+            <option value="SARL">SARL</option>
+            <option value="SAS">SAS</option>
+            <option value="EURL">EURL</option>
+            <option value="EIRL">EIRL</option>
+            <option value="SCI">SCI</option>
+            <option value="GAEC">GAEC</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="tarif">Tarif annuel (€)</label>
+        <input type="number" id="tarif" placeholder="2400" min="0" step="100" required />
+      </div>
+
+      <div class="form-group">
+        <label for="specificites">Spécificités / Notes</label>
+        <textarea id="specificites" placeholder="Exemple: Activité import-export, nécessite audit interne..."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="goBack()">Annuler</button>
+        <button class="btn btn-primary" onclick="validateStep1AndNext()">Étape 2 →</button>
+      </div>
+    </div>
+
+    <!-- Étape 2 : Upload documents -->
+    <div id="formStep2" class="form-section" style="display: none;">
+      <h2 class="form-title">Étape 2 — Documents obligatoires</h2>
+
+      <div class="alert info">
+        ℹ️ Vos documents restent sur OneDrive. L'app les valide mais ne les conserve pas.
+      </div>
+
+      <!-- Pièce identité -->
+      <div class="form-group">
+        <label>Pièce d'identité du signataire</label>
+        <div
+          class="upload-zone"
+          id="dropZone_identite"
+          ondrop="onDrop(event, 'identite')"
+          ondragover="onDragOver(event, 'identite')"
+          ondragleave="onDragLeave(event, 'identite')"
+          onclick="document.getElementById('fileInput_identite').click()"
+        >
+          <div class="upload-zone-icon">📄</div>
+          <div class="upload-zone-text">Déposer un fichier ou cliquer</div>
+          <div class="upload-zone-hint">PDF ou image JPEG/PNG (max 10 MB)</div>
+        </div>
+        <input
+          type="file"
+          id="fileInput_identite"
+          onchange="onFileSelected(event, 'identite')"
+          accept=".pdf,.jpg,.jpeg,.png"
+        />
+        <div class="file-list" id="fileList_identite"></div>
+        <div id="error_identite" class="alert error" style="display: none;"></div>
+      </div>
+
+      <!-- KBIS -->
+      <div class="form-group">
+        <label>KBIS (moins de 3 mois)</label>
+        <div
+          class="upload-zone"
+          id="dropZone_kbis"
+          ondrop="onDrop(event, 'kbis')"
+          ondragover="onDragOver(event, 'kbis')"
+          ondragleave="onDragLeave(event, 'kbis')"
+          onclick="document.getElementById('fileInput_kbis').click()"
+        >
+          <div class="upload-zone-icon">📋</div>
+          <div class="upload-zone-text">Déposer le KBIS ou cliquer</div>
+          <div class="upload-zone-hint">PDF requis (max 10 MB)</div>
+        </div>
+        <input
+          type="file"
+          id="fileInput_kbis"
+          onchange="onFileSelected(event, 'kbis')"
+          accept=".pdf"
+        />
+        <div class="file-list" id="fileList_kbis"></div>
+        <div id="error_kbis" class="alert error" style="display: none;"></div>
+      </div>
+
+      <!-- Statuts (optionnel) -->
+      <div class="form-group">
+        <label>Statuts de la société (optionnel)</label>
+        <div
+          class="upload-zone"
+          id="dropZone_statuts"
+          ondrop="onDrop(event, 'statuts')"
+          ondragover="onDragOver(event, 'statuts')"
+          ondragleave="onDragLeave(event, 'statuts')"
+          onclick="document.getElementById('fileInput_statuts').click()"
+        >
+          <div class="upload-zone-icon">📑</div>
+          <div class="upload-zone-text">Déposer les statuts ou cliquer</div>
+          <div class="upload-zone-hint">PDF ou image JPEG/PNG (max 10 MB)</div>
+        </div>
+        <input
+          type="file"
+          id="fileInput_statuts"
+          onchange="onFileSelected(event, 'statuts')"
+          accept=".pdf,.jpg,.jpeg,.png"
+        />
+        <div class="file-list" id="fileList_statuts"></div>
+        <div id="error_statuts" class="alert error" style="display: none;"></div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-secondary" onclick="goToStep1()">← Étape 1</button>
+        <button class="btn btn-primary" id="btnStep2Next" onclick="validateStep2AndNext()">
+          Générer LDM →
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const validator = new DocumentValidator();
+    const auditLogger = new AuditLogger(window.APP_CONFIG.audit);
+    const missionData = {};
+
+    // Charger liste prospects Notion
+    async function initProspects() {
+      if (!window.APP_CONFIG.demo) {
+        const notion = new NotionAPI(
+          window.APP_CONFIG.notion.token,
+          window.APP_CONFIG.notion.databaseId
+        );
+
+        try {
+          const prospects = await notion.fetchProspects();
+          const select = document.getElementById('prospectId');
+
+          prospects.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.id;
+            option.textContent = p.nom;
+            option.dataset.prospect = JSON.stringify(p);
+            select.appendChild(option);
+          });
+        } catch (err) {
+          console.error('Erreur chargement prospects:', err);
+        }
+      }
+    }
+
+    function onProspectChange() {
+      const select = document.getElementById('prospectId');
+      const option = select.options[select.selectedIndex];
+      if (option.dataset.prospect) {
+        const prospect = JSON.parse(option.dataset.prospect);
+        document.getElementById('nom').value = prospect.nom;
+        document.getElementById('email').value = prospect.email;
+        document.getElementById('missionType').value = prospect.type_mission || '';
+        document.getElementById('organisation').value = prospect.organisation || '';
+        document.getElementById('tarif').value = prospect.tarif || '';
+        document.getElementById('specificites').value = prospect.specificites || '';
+        missionData.prospectId = prospect.id;
+      }
+    }
+
+    function onDragOver(e, type) {
+      e.preventDefault();
+      document.getElementById(`dropZone_${type}`).classList.add('active');
+    }
+
+    function onDragLeave(e, type) {
+      document.getElementById(`dropZone_${type}`).classList.remove('active');
+    }
+
+    function onDrop(e, type) {
+      e.preventDefault();
+      document.getElementById(`dropZone_${type}`).classList.remove('active');
+
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        document.getElementById(`fileInput_${type}`).files = files;
+        onFileSelected({ target: { files } }, type);
+      }
+    }
+
+    async function onFileSelected(e, documentType) {
+      const files = e.target.files;
+      if (files.length === 0) return;
+
+      const file = files[0];
+      const errorDiv = document.getElementById(`error_${documentType}`);
+      const listDiv = document.getElementById(`fileList_${documentType}`);
+
+      // Valider fichier
+      const validation = validator.validateFile(file, documentType);
+
+      if (!validation.valid) {
+        errorDiv.textContent = '❌ ' + validation.error;
+        errorDiv.style.display = 'block';
+        listDiv.innerHTML = '';
+        return;
+      }
+
+      errorDiv.style.display = 'none';
+
+      // Calculer hash
+      const hash = await validator.hashFile(file);
+
+      // Afficher fichier
+      const size = validator.formatSize(file.size);
+      const fileItem = document.createElement('div');
+      fileItem.className = 'file-item';
+      fileItem.innerHTML = `
+        <span class="file-item-name">✅ ${file.name}</span>
+        <span class="file-item-size">${size}</span>
+        <button type="button" class="file-item-remove" onclick="this.parentElement.remove()">
+          Supprimer
+        </button>
+      `;
+
+      listDiv.innerHTML = '';
+      listDiv.appendChild(fileItem);
+
+      // Stocker temporairement
+      missionData[`file_${documentType}`] = {
+        file,
+        hash,
+        name: file.name,
+        size: file.size,
+      };
+
+      // Log audit
+      await auditLogger.logDocumentUpload(missionData.prospectId, documentType, hash);
+    }
+
+    function validateStep1AndNext() {
+      const nom = document.getElementById('nom').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const missionType = document.getElementById('missionType').value;
+      const organisation = document.getElementById('organisation').value;
+
+      if (!nom || !email || !missionType || !organisation) {
+        alert('Veuillez remplir tous les champs obligatoires');
+        return;
+      }
+
+      missionData.nom = nom;
+      missionData.email = email;
+      missionData.missionType = missionType;
+      missionData.organisation = organisation;
+      missionData.tarif = parseFloat(document.getElementById('tarif').value) || 0;
+      missionData.specificites = document.getElementById('specificites').value;
+
+      goToStep2();
+    }
+
+    function validateStep2AndNext() {
+      if (!missionData.file_identite || !missionData.file_kbis) {
+        alert('Veuillez télécharger pièce identité et KBIS');
+        return;
+      }
+
+      // Sauvegarder localement + aller à étape 3
+      sessionStorage.setItem('missionData', JSON.stringify(missionData));
+      window.location.href = 'preview-ldm.html';
+    }
+
+    function goBack() {
+      if (confirm('Êtes-vous sûr ? Les données ne seront pas conservées.')) {
+        window.location.href = 'index.html';
+      }
+    }
+
+    function goToStep1() {
+      document.getElementById('formStep1').style.display = 'block';
+      document.getElementById('formStep2').style.display = 'none';
+      document.getElementById('step1').classList.add('active');
+      document.getElementById('step2').classList.remove('active');
+    }
+
+    function goToStep2() {
+      document.getElementById('formStep1').style.display = 'none';
+      document.getElementById('formStep2').style.display = 'block';
+      document.getElementById('step1').classList.remove('active');
+      document.getElementById('step1').classList.add('completed');
+      document.getElementById('step2').classList.add('active');
+    }
+
+    window.addEventListener('DOMContentLoaded', initProspects);
+  </script>
+</body>
+</html>

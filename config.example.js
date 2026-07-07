@@ -1,18 +1,54 @@
-// ──────────────────────────────────────────────────────────────
-//  app-placement — Configuration
-//  Copier ce fichier en config.js et renseigner vos identifiants.
-//  Ne pas committer config.js (déjà dans .gitignore)
-// ──────────────────────────────────────────────────────────────
+/**
+ * config.example.js — Template configuration (Lettres de Mission OEC)
+ * Copier en src/js/config.js et remplir avec vos clés API
+ * ⚠️ NEVER commit config.js (déjà .gitignore)
+ */
 
-// ⚠️ SÉCURITÉ : ce token Airtable est visible côté client (dans le
-// navigateur). Utilisez un Personal Access Token à portée limitée :
-// lecture + écriture sur CETTE base uniquement, jamais un token
-// "tous accès". Pour une app en production avec des données
-// sensibles, préférez un proxy backend (Netlify Function).
-const AIRTABLE_TOKEN     = "COLLER_ICI_VOTRE_TOKEN_AIRTABLE";
-const AIRTABLE_BASE_ID   = "COLLER_ICI_VOTRE_BASE_ID";       // ex: appXXXXXXXXXXXXXX
-const AIRTABLE_TABLE_NAME = "Candidats";
+window.APP_CONFIG = {
+  // Notion API — Source unique infos prospect
+  notion: {
+    token: "ntn_...", // Personal Access Token from notion.com/my-integrations
+    databaseId: "...", // ID DB Notion (prospects/missions)
+  },
 
-// URL du webhook Make — déclenché UNIQUEMENT au clic
-// "Marquer comme placé" (fan-out vers 4 services OAuth)
-const MAKE_WEBHOOK_URL = "COLLER_ICI_VOTRE_URL_MAKE";
+  // OneDrive / Microsoft Graph — Stockage docs + LDM + logs audit
+  onedrive: {
+    clientId: "...",
+    clientSecret: "...",
+    tenantId: "...",
+    redirectUri: `${window.location.origin}/src/callback-onedrive.html`,
+    cabinetFolderId: "...", // ID dossier principal cabinet OneDrive
+  },
+
+  // JeSigneExpert — Signature électronique
+  jesigneexpert: {
+    apiKey: "...",
+    webhookSecret: "...",
+    webhookUrl: `${window.location.origin}/.netlify/functions/webhook-jesigneexpert`,
+  },
+
+  // Pennylane (intégration future)
+  pennylane: {
+    webhookSecret: "...",
+  },
+
+  // Chiffrement (optionnel — données sensibles)
+  encryption: {
+    enabled: false,
+    keyId: "...",
+  },
+
+  // RGPD & Audit
+  audit: {
+    enabled: true,
+    storageProvider: "onedrive",
+    logsFolder: "Audit Logs",
+    retentionDays: 2555, // 7 ans légalement
+  },
+
+  // Mode démo (données fictives pour test UI sans API)
+  demo: false,
+
+  // Debug
+  debug: false,
+};

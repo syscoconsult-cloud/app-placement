@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lettres de Mission — Générateur OEC</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="js/config.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0A1628; --navy-mid: #1C2F4E; --teal: #0D9488;
+      --red: #DC2626; --green: #16A34A; --yellow: #F59E0B;
+      --bg: #F1F5F9; --white: #FFFFFF; --text: #0F172A; --muted: #64748B; --border: #E2E8F0;
+    }
+
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header {
+      background: var(--navy);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    }
+    .app-logo {
+      width: 36px;
+      height: 36px;
+      background: var(--teal);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--white);
+    }
+    header p {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+      margin-top: 2px;
+    }
+    .header-badge {
+      margin-left: auto;
+      background: rgba(13, 148, 136, 0.18);
+      color: #5EEAD4;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(13, 148, 136, 0.3);
+    }
+
+    main { max-width: 1000px; margin: 32px auto; padding: 0 20px 60px; }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .btn-primary {
+      padding: 10px 20px;
+      background: var(--teal);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #0B7A70; }
+    .btn-primary:disabled { background: var(--muted); cursor: not-allowed; }
+
+    /* Mission cards */
+    .mission-list { display: flex; flex-direction: column; gap: 12px; }
+    .mission-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      border-left: 4px solid var(--teal);
+    }
+    .mission-card.en-cours { border-left-color: var(--yellow); }
+    .mission-card.signature-en-cours { border-left-color: #3B82F6; }
+    .mission-card.signee { border-left-color: var(--green); }
+
+    .mission-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal), #2563EB);
+      color: white;
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .mission-info { flex: 1; min-width: 0; }
+    .mission-name {
+      font-weight: 700;
+      font-size: 0.98rem;
+      color: var(--text);
+    }
+    .mission-meta {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .status-badge.en-cours { background: #FEF3C7; color: #92400E; }
+    .status-badge.signature-en-cours { background: #DBEAFE; color: #1E40AF; }
+    .status-badge.signee { background: #F0FDF4; color: var(--green); }
+    .status-badge.archivee { background: #F3F4F6; color: #4B5563; }
+
+    .mission-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .btn-action {
+      padding: 8px 14px;
+      background: transparent;
+      color: var(--teal);
+      border: 1px solid var(--teal);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-action:hover {
+      background: var(--teal);
+      color: white;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .loading-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border);
+      border-top: 3px solid var(--teal);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .info-banner {
+      background: #F0FDF4;
+      border-left: 4px solid var(--green);
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 0.84rem;
+      color: #166534;
+    }
+
+    @media (max-width: 640px) {
+      header { padding: 16px 20px; }
+      header h1 { font-size: 0.95rem; }
+      .header-badge { display: none; }
+      main { margin: 20px auto; }
+      .mission-card {
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .mission-actions {
+        width: 100%;
+        order: 10;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="app-logo">📋</div>
+    <div>
+      <h1>Lettres de Mission</h1>
+      <p>Générateur OEC — Expert-comptable & CAC</p>
+    </div>
+    <div class="header-badge">RGPD Compliant</div>
+  </header>
+
+  <main>
+    <div class="info-banner">
+      ✅ Conformité OEC & RGPD — Données archivées OneDrive — Audit trail horodaté
+    </div>
+
+    <div class="section-header">
+      <div>
+        <h2 class="section-title">Dossiers en cours</h2>
+      </div>
+      <button class="btn-primary" onclick="goToNewMission()">+ Nouvelle mission</button>
+    </div>
+
+    <div id="missionContainer">
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <p>Chargement des dossiers...</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Simple init — charge depuis Notion en démo ou réel
+    async function init() {
+      const container = document.getElementById('missionContainer');
+
+      if (window.APP_CONFIG.demo) {
+        // Mode démo : données fictives
+        const missions = [
+          {
+            id: '1',
+            prospect: { nom: 'SARL Acme Inc' },
+            mission: { type: 'Expertise Comptable', organisation: 'SARL' },
+            statut: 'en_cours',
+          },
+          {
+            id: '2',
+            prospect: { nom: 'Jean Martin' },
+            mission: { type: 'CAC', organisation: 'EIRL' },
+            statut: 'signature-en-cours',
+          },
+          {
+            id: '3',
+            prospect: { nom: 'Tech Solutions' },
+            mission: { type: 'Expertise Comptable', organisation: 'SAS' },
+            statut: 'signee',
+          },
+        ];
+
+        renderMissions(missions);
+      } else {
+        try {
+          // Appel API Notion (à implémenter)
+          const missions = await fetch('/.netlify/functions/list-missions')
+            .then(r => r.json());
+
+          if (missions.length === 0) {
+            container.innerHTML = `
+              <div class="empty-state">
+                <p>Aucune mission en cours</p>
+                <button class="btn-primary" style="margin-top: 20px;" onclick="goToNewMission()">
+                  Créer la première
+                </button>
+              </div>
+            `;
+          } else {
+            renderMissions(missions);
+          }
+        } catch (err) {
+          console.error('Erreur chargement missions:', err);
+          container.innerHTML = `
+            <div class="empty-state" style="color: var(--red);">
+              <p>❌ Erreur chargement. Vérifiez config.js</p>
+            </div>
+          `;
+        }
+      }
+    }
+
+    function renderMissions(missions) {
+      const container = document.getElementById('missionContainer');
+      if (missions.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>Aucune mission en cours</p>
+          </div>
+        `;
+        return;
+      }
+
+      const html = missions.map(mission => `
+        <div class="mission-card ${mission.statut}">
+          <div class="mission-avatar">
+            ${mission.prospect.nom.charAt(0).toUpperCase()}
+          </div>
+          <div class="mission-info">
+            <div class="mission-name">${mission.prospect.nom}</div>
+            <div class="mission-meta">
+              ${mission.mission.type} • ${mission.mission.organisation}
+            </div>
+          </div>
+          <span class="status-badge ${mission.statut}">
+            ${mission.statut.replace(/_/g, ' ')}
+          </span>
+          <div class="mission-actions">
+            <button class="btn-action" onclick="viewMission('${mission.id}')">
+              Voir
+            </button>
+            ${mission.statut === 'en_cours' ? `
+              <button class="btn-action" onclick="editMission('${mission.id}')">
+                Éditer
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = html;
+    }
+
+    function goToNewMission() {
+      window.location.href = 'new-mission.html';
+    }
+
+    function editMission(missionId) {
+      window.location.href = `new-mission.html?id=${missionId}`;
+    }
+
+    function viewMission(missionId) {
+      window.location.href = `tracking.html?id=${missionId}`;
+    }
+
+    // Init on load
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
