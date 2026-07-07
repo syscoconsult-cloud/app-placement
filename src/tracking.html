@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Suivi Signature — Lettres de Mission</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="js/config.js"></script>
+  <script src="js/audit.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0A1628; --teal: #0D9488; --red: #DC2626; --green: #16A34A;
+      --yellow: #F59E0B; --bg: #F1F5F9; --white: #FFFFFF; --text: #0F172A;
+      --muted: #64748B; --border: #E2E8F0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--navy);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .app-logo {
+      width: 36px;
+      height: 36px;
+      background: var(--teal);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    header a {
+      margin-left: auto;
+      color: rgba(255, 255, 255, 0.8);
+      text-decoration: none;
+      font-size: 0.84rem;
+      padding: 8px 12px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 32px auto;
+      padding: 0 20px 60px;
+    }
+
+    .status-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    .status-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-icon {
+      font-size: 1.5rem;
+    }
+
+    .timeline {
+      position: relative;
+      margin: 24px 0;
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .timeline-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 40px;
+      width: 2px;
+      height: calc(100% + 24px);
+      background: var(--border);
+    }
+
+    .timeline-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .timeline-dot.active {
+      background: var(--teal);
+      color: white;
+    }
+
+    .timeline-dot.completed {
+      background: var(--green);
+      color: white;
+    }
+
+    .timeline-dot.pending {
+      background: var(--yellow);
+      color: white;
+    }
+
+    .timeline-content {
+      flex: 1;
+      padding-top: 6px;
+    }
+
+    .timeline-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .timeline-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.84rem;
+    }
+
+    .alert.info {
+      background: #DBEAFE;
+      border-left: 4px solid #3B82F6;
+      color: #1E40AF;
+    }
+
+    .alert.success {
+      background: #F0FDF4;
+      border-left: 4px solid var(--green);
+      color: #166534;
+    }
+
+    .alert.warning {
+      background: #FEF3C7;
+      border-left: 4px solid var(--yellow);
+      color: #92400E;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .info-item {
+      background: #F9FAFB;
+      padding: 12px;
+      border-radius: 8px;
+    }
+
+    .info-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .info-value {
+      font-size: 0.9rem;
+      color: var(--text);
+      word-break: break-word;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--teal);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #0B7A70;
+    }
+
+    .btn-primary:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--teal);
+      border: 1px solid var(--teal);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(13, 148, 136, 0.05);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .auto-refresh {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="app-logo">📋</div>
+    <h1>Suivi de Signature</h1>
+    <a href="index.html">← Dashboard</a>
+  </header>
+
+  <main>
+    <div class="status-card">
+      <div class="status-title">
+        <span class="status-icon" id="statusIcon">📝</span>
+        <span id="statusText">Chargement...</span>
+      </div>
+
+      <div class="alert info" id="alertBox" style="display: none;"></div>
+
+      <div class="timeline" id="timeline">
+        <!-- Rempli par JS -->
+      </div>
+
+      <div class="info-grid" id="infoGrid">
+        <!-- Rempli par JS -->
+      </div>
+    </div>
+
+    <div class="status-card" id="actionsCard" style="display: none;">
+      <div class="status-title">Actions</div>
+      <div class="actions">
+        <button class="btn btn-primary" id="btnDownloadSigned" onclick="downloadSigned()">
+          ⬇️ Télécharger LDM signée
+        </button>
+        <button class="btn btn-primary" id="btnArchive" onclick="archiveMission()">
+          📦 Archiver & Classer
+        </button>
+        <button class="btn btn-secondary" onclick="goBack()">
+          ← Retour
+        </button>
+      </div>
+    </div>
+
+    <div class="auto-refresh">
+      <span id="refreshText">Auto-refresh: actif</span>
+    </div>
+  </main>
+
+  <script>
+    const auditLogger = new AuditLogger(window.APP_CONFIG.audit);
+    let missionId = null;
+    let jeSigneExpertId = null;
+    let currentStatus = null;
+    let refreshInterval = null;
+
+    async function init() {
+      // Récupérer IDs depuis sessionStorage
+      missionId = sessionStorage.getItem('missionId');
+      jeSigneExpertId = sessionStorage.getItem('jeSigneExpertId');
+
+      if (!missionId || !jeSigneExpertId) {
+        alert('Erreur: données manquantes');
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // Charger statut initial
+      await checkSignatureStatus();
+
+      // Refresh toutes les 10 secondes
+      refreshInterval = setInterval(checkSignatureStatus, 10000);
+    }
+
+    async function checkSignatureStatus() {
+      try {
+        const response = await fetch(
+          `/.netlify/functions/signature-status?missionId=${missionId}&jeSigneExpertId=${jeSigneExpertId}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Erreur récupération statut');
+        }
+
+        const data = await response.json();
+        displayStatus(data);
+      } catch (err) {
+        console.error('Erreur statut:', err);
+      }
+    }
+
+    function displayStatus(data) {
+      currentStatus = data.status; // 'en_attente', 'signee', 'rejected'
+
+      const statusIcon = document.getElementById('statusIcon');
+      const statusText = document.getElementById('statusText');
+      const alertBox = document.getElementById('alertBox');
+
+      if (data.status === 'signee') {
+        statusIcon.textContent = '✅';
+        statusText.textContent = 'Lettre de mission signée !';
+        alertBox.className = 'alert success';
+        alertBox.innerHTML =
+          '✅ Le document a été signé et peut être archivé.';
+        alertBox.style.display = 'block';
+        clearInterval(refreshInterval);
+        document.getElementById('refreshText').textContent = 'Signé - Auto-refresh arrêté';
+
+        // Show archive button
+        document.getElementById('actionsCard').style.display = 'block';
+      } else if (data.status === 'rejected') {
+        statusIcon.textContent = '❌';
+        statusText.textContent = 'Signature rejetée';
+        alertBox.className = 'alert warning';
+        alertBox.innerHTML =
+          '❌ Le client a refusé de signer. Vous pouvez retenter.';
+        alertBox.style.display = 'block';
+        clearInterval(refreshInterval);
+      } else {
+        statusIcon.textContent = '⏳';
+        statusText.textContent = 'En attente de signature...';
+        alertBox.className = 'alert info';
+        alertBox.innerHTML =
+          'ℹ️ En attente du client. Lien de signature envoyé à ' + (data.clientEmail || '?');
+        alertBox.style.display = 'block';
+      }
+
+      displayTimeline(data);
+      displayInfo(data);
+    }
+
+    function displayTimeline(data) {
+      const timeline = document.getElementById('timeline');
+      timeline.innerHTML = `
+        <div class="timeline-item">
+          <div class="timeline-dot ${data.status ? 'completed' : 'pending'}">📝</div>
+          <div class="timeline-content">
+            <div class="timeline-label">LDM générée</div>
+            <div class="timeline-meta">${data.generatedAt || '—'}</div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot ${data.status === 'en_attente' || data.status === 'signee' ? 'active' : 'pending'}">
+            ${data.status === 'en_attente' ? '🔗' : '✉️'}
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-label">Envoyée à signature</div>
+            <div class="timeline-meta">${data.sentAt || '—'}</div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot ${data.status === 'signee' ? 'completed' : 'pending'}">✍️</div>
+          <div class="timeline-content">
+            <div class="timeline-label">Signée par le client</div>
+            <div class="timeline-meta">${data.signedAt || 'En attente...'}</div>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-dot ${data.archived ? 'completed' : 'pending'}">📦</div>
+          <div class="timeline-content">
+            <div class="timeline-label">Archivée</div>
+            <div class="timeline-meta">${data.archivedAt || 'En attente...'}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function displayInfo(data) {
+      const infoGrid = document.getElementById('infoGrid');
+      infoGrid.innerHTML = `
+        <div class="info-item">
+          <div class="info-label">Prospect</div>
+          <div class="info-value">${data.clientName || '—'}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Email</div>
+          <div class="info-value">${data.clientEmail || '—'}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Statut JeSigneExpert</div>
+          <div class="info-value">${data.status || '—'}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">ID Signature</div>
+          <div class="info-value" style="font-size: 0.8rem; font-family: monospace;">
+            ${jeSigneExpertId.substring(0, 12)}...
+          </div>
+        </div>
+      `;
+    }
+
+    async function downloadSigned() {
+      try {
+        const response = await fetch(
+          `/.netlify/functions/download-signed-ldm?jeSigneExpertId=${jeSigneExpertId}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Erreur téléchargement');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `LDM_signee_${missionId.substring(0, 8)}.pdf`;
+        a.click();
+      } catch (err) {
+        alert('❌ Erreur: ' + err.message);
+      }
+    }
+
+    async function archiveMission() {
+      if (!confirm('Archiver cette mission ? Les données seront classées OneDrive + Pennylane.')) {
+        return;
+      }
+
+      try {
+        document.getElementById('btnArchive').disabled = true;
+        document.getElementById('btnArchive').innerHTML =
+          '<span class="spinner"></span>Archivage...';
+
+        const response = await fetch('/.netlify/functions/archive-mission', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            missionId,
+            jeSigneExpertId,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Erreur archivage');
+        }
+
+        const data = await response.json();
+
+        // Log audit
+        await auditLogger.logArchived(missionId, data.oneDriveFolderId, data.pennylaneId);
+
+        alert('✅ Mission archivée avec succès !');
+        window.location.href = 'index.html';
+      } catch (err) {
+        console.error('Erreur archivage:', err);
+        alert('❌ Erreur: ' + err.message);
+        document.getElementById('btnArchive').disabled = false;
+        document.getElementById('btnArchive').innerHTML = '📦 Archiver & Classer';
+      }
+    }
+
+    function goBack() {
+      window.location.href = 'index.html';
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('beforeunload', () => {
+      if (refreshInterval) clearInterval(refreshInterval);
+    });
+  </script>
+</body>
+</html>
