@@ -1,0 +1,8 @@
+[
+  {"dossier": "EXEMPLE — Boulangerie Martin SAS", "pays": "France", "forme": "SAS", "cloture": "2026-12-31",
+   "regime_imposition": "IS", "regime_tva": "Mensuel (CA3)", "jour_tva": 19, "salaries": true, "effectif": 8,
+   "cfe": true, "acompte_cfe": false, "cvae": false, "depot_comptes": true},
+  {"dossier": "EXEMPLE — Cotonou Services SARL", "pays": "Bénin", "forme": "SARL", "cloture": "2026-12-31",
+   "regime_imposition": "IS", "regime_tva": "Mensuel (Bénin)", "jour_tva": 10, "salaries": true, "effectif": 5,
+   "depot_comptes": true}
+]
