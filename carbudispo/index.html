@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CarbuDispo</title>
+  <meta name="description" content="Trouvez l'essence, le gasoil et le gaz disponibles près de vous au Bénin.">
+  <meta name="theme-color" content="#0B2545">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <header class="topbar">
+    <div>
+      <div class="brand">CarbuDispo</div>
+      <div class="where" id="where">Cotonou</div>
+    </div>
+    <div class="points" id="points" aria-label="Vos points">0 pts</div>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <main id="main">
+    <!-- ── Carte ── -->
+    <section class="view" id="view-map">
+      <div class="chips" role="group" aria-label="Produit recherché">
+        <button type="button" class="chip" data-fuel="essence">Essence</button>
+        <button type="button" class="chip" data-fuel="gasoil">Gasoil</button>
+        <button type="button" class="chip" data-fuel="gaz">Gaz</button>
+      </div>
+      <div class="locbar" id="locbar"></div>
+      <div id="map" aria-label="Carte des points de vente"></div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="dot ok"></i>Disponible</span>
+        <span><i class="dot queue"></i>File d'attente</span>
+        <span><i class="dot out"></i>Rupture</span>
+        <span><i class="dot stale"></i>À confirmer / pas d'info</span>
+      </div>
+      <h2 class="list-title">Autour de vous · <span id="fuel-label">Essence</span></h2>
+      <div class="list" id="station-list"><p class="muted">Chargement…</p></div>
+    </section>
+
+    <!-- ── Alertes ── -->
+    <section class="view" id="view-alerts" hidden></section>
+
+    <!-- ── Espace vendeur ── -->
+    <section class="view" id="view-vendor" hidden></section>
+  </main>
+
+  <nav class="tabbar" aria-label="Navigation principale">
+    <button type="button" data-view="map" aria-current="page">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Carte</button>
+    <button type="button" data-view="alerts">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4l2-2z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Alertes</button>
+    <button type="button" data-view="vendor">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l2-5h14l2 5"/><path d="M5 9v11h14V9"/><path d="M9 20v-6h6v6"/></svg>Espace vendeur</button>
+  </nav>
+
+  <div class="sheet" id="sheet" hidden></div>
+  <div class="overlay" id="report" hidden></div>
+  <div class="toast" id="toast" role="status" hidden></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

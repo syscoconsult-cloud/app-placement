@@ -1,0 +1,12 @@
+# CarbuDispo — déploiement Netlify
+# Dans Netlify, indiquer « Base directory » = carbudispo
+
+[build]
+  publish = "."
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    Permissions-Policy = "geolocation=(self), camera=(), microphone=()"
