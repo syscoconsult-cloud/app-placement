@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clôture, agents pour EC</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : feuille de journal comptable. Une colonne de lecture, une marge "folio" à gauche qui porte les heures et les références, des maquettes posées comme des pièces justificatives. */
+:root{
+  --paper:#F6F8F6; --card:#FFFFFF; --ink:#13201C; --muted:#56655F; --rule:#D9E1DD;
+  --accent:#0D6A56; --accent-ink:#FFFFFF; --accent-soft:#E2F0EB; --red:#B13A2D; --red-soft:#F7E5E2;
+  --grid:rgba(13,106,86,.055);
+  --f-display:"Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --s-1:.8125rem; --s0:1rem; --s1:1.1875rem; --s2:1.5rem; --s3:2.125rem; --s4:clamp(2.25rem,5.6vw,3.9rem);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E1412; --card:#151D1A; --ink:#E5ECE9; --muted:#94A39D; --rule:#27322E;
+  --accent:#43B995; --accent-ink:#05221A; --accent-soft:#16302A; --red:#E36E60; --red-soft:#3A1E1B;
+  --grid:rgba(67,185,149,.06); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1412; --card:#151D1A; --ink:#E5ECE9; --muted:#94A39D; --rule:#27322E;
+  --accent:#43B995; --accent-ink:#05221A; --accent-soft:#16302A; --red:#E36E60; --red-soft:#3A1E1B;
+  --grid:rgba(67,185,149,.06); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:var(--s0);line-height:1.6;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px);background-size:100% 28px}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;line-height:1.08;text-wrap:balance;margin:0;letter-spacing:-.01em}
+h1{font-size:var(--s4)} h2{font-size:var(--s3)} h3{font-size:var(--s1);font-weight:500;letter-spacing:0}
+p{margin:0}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.label{font-family:var(--f-mono);font-size:var(--s-1);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.lede{font-size:var(--s1);color:var(--muted);max-width:60ch}
+
+/* bandeau maquette */
+.draft{background:var(--red-soft);color:var(--red);font-size:var(--s-1);text-align:center;padding-block:6px}
+
+/* header */
+header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:18px}
+.brand{font-family:var(--f-display);font-weight:700;font-size:1.35rem;display:flex;align-items:baseline;gap:8px;color:var(--ink);text-decoration:none}
+.brand b{display:inline-block;width:.62em;height:.62em;border-radius:2px;background:var(--accent)}
+.pill{font-family:var(--f-mono);font-size:var(--s-1);border:1px solid var(--rule);border-radius:999px;padding:3px 10px;color:var(--muted);background:var(--card)}
+
+/* hero */
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding-block:40px 64px}
+.hero-text{display:flex;flex-direction:column;gap:22px;min-width:0}
+.hero h1 em{font-style:normal;color:var(--accent)}
+form.ask{display:flex;gap:8px;flex-wrap:wrap;max-width:480px}
+form.ask label{width:100%;font-size:var(--s-1);color:var(--muted)}
+form.ask input{flex:1 1 220px;min-width:0;font:inherit;padding:12px 14px;border:1px solid var(--rule);border-radius:8px;background:var(--card);color:var(--ink)}
+.btn{font:inherit;font-weight:600;border:0;border-radius:8px;padding:12px 18px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.form-note{font-size:var(--s-1);color:var(--muted);max-width:480px}
+.form-ok{font-size:var(--s-1);color:var(--accent);font-weight:600}
+.trust{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:var(--s-1);color:var(--muted);padding:0;margin:0;list-style:none}
+.trust li::before{content:"✓ ";color:var(--accent)}
+
+/* pièce : maquette d'écran */
+.piece{background:var(--card);border:1px solid var(--rule);border-radius:10px;box-shadow:0 18px 40px -24px rgba(10,40,30,.35);overflow:hidden;min-width:0}
+.piece-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--rule);font-size:var(--s-1)}
+.piece-body{padding:14px}
+.scroll{overflow-x:auto}
+table.ledger{width:100%;border-collapse:collapse;font-size:.875rem}
+table.ledger th{font-family:var(--f-mono);font-weight:500;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--rule)}
+table.ledger td{padding:8px;border-bottom:1px solid var(--rule);vertical-align:top}
+table.ledger tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font-family:var(--f-mono);font-size:.7rem;padding:1px 7px;border-radius:4px;white-space:nowrap}
+.t-ok{background:var(--accent-soft);color:var(--accent)}
+.t-warn{background:var(--red-soft);color:var(--red)}
+.t-info{background:transparent;color:var(--muted);border:1px solid var(--rule)}
+
+/* sections */
+section{padding-block:72px}
+section + section{border-top:1px solid var(--rule)}
+.sec-head{display:flex;flex-direction:column;gap:12px;margin-bottom:40px;max-width:720px}
+
+/* journée : marge folio */
+.day{display:flex;flex-direction:column;gap:56px}
+.entry{display:grid;grid-template-columns:96px minmax(0,1fr) minmax(0,1.1fr);gap:28px;align-items:start}
+.folio{font-family:var(--f-mono);font-size:1.05rem;color:var(--accent);border-top:2px solid var(--accent);padding-top:6px}
+.folio small{display:block;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.entry-text{display:flex;flex-direction:column;gap:10px}
+.entry-text p{color:var(--muted)}
+
+/* bulles de messagerie */
+.chat{display:flex;flex-direction:column;gap:8px;font-size:.9rem}
+.msg{max-width:88%;padding:8px 12px;border-radius:12px;line-height:1.45}
+.me{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:3px}
+.bot{align-self:flex-start;background:var(--paper);border:1px solid var(--rule);border-bottom-left-radius:3px}
+.bot ul{margin:6px 0 0;padding-left:18px}
+.who{font-size:.72rem;color:var(--muted);font-family:var(--f-mono)}
+
+/* boîte mail */
+.mail{display:flex;flex-direction:column}
+.mail-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--rule)}
+.mail-row:last-child{border-bottom:0}
+.mail-row strong{font-weight:600;font-size:.9rem}
+.mail-row .sum{grid-column:1/-1;font-size:.84rem;color:var(--muted)}
+.mail-row .file{grid-column:1/-1;font-family:var(--f-mono);font-size:.74rem;color:var(--accent)}
+
+/* plan */
+.plan-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.plan-steps li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;padding:8px 0;border-bottom:1px dashed var(--rule);font-size:.88rem}
+.plan-steps li span:first-child{font-family:var(--f-mono);color:var(--muted)}
+.plan-foot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin-top:12px;font-size:.88rem}
+.plan-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.plan-actions span{font-size:.82rem;font-weight:600;padding:7px 12px;border-radius:6px;border:1px solid var(--rule)}
+.plan-actions .go{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+/* grilles */
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+.cell{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--ink);padding-top:14px;min-width:0}
+.cell p{color:var(--muted);font-size:.94rem}
+
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:start}
+.agents-list{display:flex;flex-direction:column;gap:14px}
+.agent{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center}
+.avatar{width:44px;height:44px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-weight:700}
+.agent p{font-size:.88rem;color:var(--muted)}
+.sched{list-style:none;margin:0;padding:0}
+.sched li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:.88rem}
+.sched li:last-child{border-bottom:0}
+.sched .when{font-family:var(--f-mono);font-size:.76rem;color:var(--muted);text-align:right}
+
+/* intégrations */
+.integr{display:flex;flex-wrap:wrap;gap:8px;margin-top:28px}
+.integr span{font-size:.85rem;border:1px solid var(--rule);background:var(--card);border-radius:6px;padding:5px 10px}
+.integr span.soon{color:var(--muted);border-style:dashed}
+
+/* fondatrice */
+.founder{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:48px;align-items:start}
+blockquote{margin:0;font-family:var(--f-display);font-size:var(--s2);line-height:1.25;font-weight:500}
+.founder-text{display:flex;flex-direction:column;gap:16px;color:var(--muted);max-width:62ch}
+.todo{background:var(--red-soft);color:var(--red);font-size:var(--s-1);padding:6px 10px;border-radius:6px;align-self:flex-start}
+
+/* FAQ */
+.faq{display:flex;flex-direction:column;max-width:820px}
+details{border-bottom:1px solid var(--rule);padding-block:16px}
+summary{cursor:pointer;font-weight:600;font-size:1.05rem;list-style:none;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--f-mono);color:var(--accent)}
+details[open] summary::after{content:"−"}
+details p{margin-top:10px;color:var(--muted);max-width:68ch}
+
+.cta{background:var(--ink);color:var(--paper)}
+.cta .wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center;padding-block:64px}
+.cta h2{color:var(--paper)}
+.cta p,.cta .form-note,.cta label{color:color-mix(in srgb,var(--paper) 72%,transparent)!important}
+.cta input{border-color:transparent!important}
+footer .wrap{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;padding-block:28px;font-size:var(--s-1);color:var(--muted)}
+
+@media (max-width:900px){
+  .hero .wrap,.two,.founder,.cta .wrap{grid-template-columns:minmax(0,1fr)}
+  .entry{grid-template-columns:minmax(0,1fr);gap:14px}
+  .folio{max-width:120px}
+  .grid4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid3{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){ .grid4{grid-template-columns:minmax(0,1fr)} section{padding-block:52px} }
+@media (prefers-reduced-motion:no-preference){ .btn{transition:filter .15s} }
+</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="draft">Maquette de travail. Le nom « Clôture », les chiffres et les exemples sont provisoires.</div>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="#top"><b aria-hidden="true"></b>Clôture</a>
+    <span class="pill">Bêta privée · cabinets d’expertise comptable</span>
+  </div>
+</header>
+
+<main id="top">
+<div class="hero">
+  <div class="wrap">
+    <div class="hero-text">
+      <span class="label">Agents IA pour experts-comptables</span>
+      <h1>Un agent pour chaque expert-comptable. <em>Et un pour chaque dossier client.</em></h1>
+      <p class="lede">Il lit vos e-mails, relance les pièces manquantes, rédige dans votre style, prépare les documents de fin d’exercice et surveille les échéances. Les gros chantiers, comme la campagne de bilans, vous arrivent sous forme de plan à approuver.</p>
+      <form class="ask" id="ask1" novalidate>
+        <label for="email1">Adresse e-mail professionnelle</label>
+        <input id="email1" type="email" placeholder="vous@cabinet.fr" autocomplete="email" required>
+        <button class="btn" type="submit">Demander un accès</button>
+      </form>
+      <p class="form-note" id="note1">Places limitées, cabinets sélectionnés au fil de l’eau.</p>
+      <ul class="trust">
+        <li>Données hébergées en France</li>
+        <li>Aucun entraînement sur vos données</li>
+        <li>Rien ne part sans votre accord</li>
+      </ul>
+    </div>
+
+    <div class="piece" aria-label="Exemple de point du matin">
+      <div class="piece-head"><strong>Point du matin · lundi 7 h 45</strong><span class="label">Agent de Yasmine</span></div>
+      <div class="piece-body scroll">
+        <table class="ledger">
+          <thead><tr><th>Dossier</th><th>Échéance</th><th>État</th></tr></thead>
+          <tbody>
+            <tr><td>SAS Atelier Morel</td><td class="mono">CA3 · 19/11</td><td><span class="tag t-ok">prête à valider</span></td></tr>
+            <tr><td>SARL Boulangerie Kerlan</td><td class="mono">Liasse 2065</td><td><span class="tag t-warn">2 pièces manquent</span></td></tr>
+            <tr><td>SCI Les Tilleuls</td><td class="mono">2072 · AG</td><td><span class="tag t-info">relance envoyée</span></td></tr>
+            <tr><td>EURL Novaprint</td><td class="mono">Acompte IS · 15/12</td><td><span class="tag t-ok">calculé</span></td></tr>
+            <tr><td>SAS Méribel Conseil</td><td class="mono">Rappro. banque</td><td><span class="tag t-warn">14 lignes non lettrées</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="journee">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Une journée avec vos agents</span>
+      <h2>Un message depuis la voiture. Le reste de la journée, pris en charge.</h2>
+      <p class="lede">Yasmine est expert-comptable et gère un portefeuille de TPE et PME. Son agent personnel travaille dans sa boîte mail, ses documents et son logiciel de production. Chaque dossier client a aussi son agent. Aucun envoi ne part sans son accord.</p>
+    </div>
+
+    <div class="day">
+      <div class="entry">
+        <div class="folio">07:52<small>WhatsApp</small></div>
+        <div class="entry-text">
+          <h3>Une question avant le premier rendez-vous.</h3>
+          <p>« Où en est la liasse Kerlan ? » La réponse vient du dossier : ce qui est saisi, ce qui manque, ce que le client a promis et quand. La relance est rédigée aussitôt. Elle part en votre nom quand vous dites go.</p>
+        </div>
+        <div class="piece"><div class="piece-body chat">
+          <div class="msg me">Où en est la liasse Kerlan ?</div>
+          <div class="msg bot">Saisie terminée jusqu’au 30/09. Il manque :
+            <ul><li>le relevé Crédit Agricole de septembre ;</li><li>l’état des stocks au 30/09, promis par M. Kerlan le 14/10.</li></ul>
+            J’ai préparé une relance courte avec le lien de dépôt. Je l’envoie ?</div>
+          <div class="msg me">go</div>
+          <div class="who">Relance envoyée à 07:53 · tracée dans le dossier Kerlan</div>
+        </div></div>
+      </div>
+
+      <div class="entry">
+        <div class="folio">09:10<small>Boîte mail</small></div>
+        <div class="entry-text">
+          <h3>Chaque e-mail lu, trié, rattaché au bon dossier.</h3>
+          <p>Chaque message arrive résumé et qualifié (à répondre, pièce reçue, pour information), avec son dossier et sa mission déjà proposés. Les factures et relevés joints sont déposés dans le logiciel de production.</p>
+        </div>
+        <div class="piece"><div class="piece-body mail">
+          <div class="mail-row"><strong>Atelier Morel · question TVA</strong><span class="tag t-warn">à répondre</span>
+            <span class="sum">Demande si l’acompte reçu en octobre doit figurer sur la CA3 d’octobre.</span>
+            <span class="file">Atelier Morel › TVA 2026</span></div>
+          <div class="mail-row"><strong>Kerlan · relevé septembre</strong><span class="tag t-ok">pièce reçue</span>
+            <span class="sum">PDF de 4 pages, déposé et rapproché à 92 %.</span>
+            <span class="file">Kerlan › Révision 2026 › Banque</span></div>
+          <div class="mail-row"><strong>URSSAF · avis</strong><span class="tag t-info">pour information</span>
+            <span class="sum">Confirmation de réception de la DSN d’octobre pour Novaprint.</span>
+            <span class="file">Novaprint › Social</span></div>
+        </div></div>
+      </div>
+
+      <div class="entry">
+        <div class="folio">11:30<small>Rédaction</small></div>
+        <div class="entry-text">
+          <h3>Votre position en une ligne. La réponse en entier.</h3>
+          <p>Vous donnez la réponse de fond, l’agent la met en forme dans votre style, dans le même fil, avec les références du dossier. Rien ne part avant que vous appuyiez sur Envoyer. Le jugement technique reste le vôtre.</p>
+        </div>
+        <div class="piece"><div class="piece-body chat">
+          <div class="msg me">Réponds à Morel : oui, l’acompte va sur la CA3 d’octobre, exigibilité à l’encaissement pour une prestation de services. Propose un point jeudi.</div>
+          <div class="msg bot">Brouillon prêt dans le fil « Question TVA », avec le montant de l’acompte repris du relevé et deux créneaux jeudi. À relire avant envoi.</div>
+        </div></div>
+      </div>
+
+      <div class="entry">
+        <div class="folio">14:00<small>Documents</small></div>
+        <div class="entry-text">
+          <h3>Les documents de fin d’exercice, rédigés et classés.</h3>
+          <p>Procès-verbal d’AGO d’approbation des comptes, rapport de gestion, lettre de mission, attestations : préparés à partir des comptes arrêtés et des statuts, puis classés dans le dossier. Vous relisez et vous signez.</p>
+        </div>
+        <div class="piece"><div class="piece-body chat">
+          <div class="msg me">Prépare l’AGO des Tilleuls avec affectation du résultat en report à nouveau.</div>
+          <div class="msg bot">PV d’AGO et texte des résolutions prêts (Word). Résultat repris de la liasse 2072, quorum vérifié sur le registre des associés. Classés dans Les Tilleuls › Juridique › AG 2026.</div>
+        </div></div>
+      </div>
+
+      <div class="entry">
+        <div class="folio">17:45<small>Plan</small></div>
+        <div class="entry-text">
+          <h3>Les gros chantiers : l’agent propose, vous approuvez.</h3>
+          <p>Pour une campagne de bilans, il présente les étapes, les agents mobilisés et le coût estimé, avec un plafond qu’il ne peut pas dépasser. Vous approuvez, recadrez en une phrase ou refusez, depuis le bureau ou le téléphone.</p>
+        </div>
+        <div class="piece">
+          <div class="piece-head"><strong>Campagne de bilans · clôtures au 31/12</strong><span class="tag t-warn">en attente</span></div>
+          <div class="piece-body">
+            <ol class="plan-steps">
+              <li><span>1</span><span>Inventaire des pièces manquantes, 38 dossiers</span><span class="mono">lecture seule</span></li>
+              <li><span>2</span><span>Relances clients groupées, à valider par lot</span><span class="mono">38 brouillons</span></li>
+              <li><span>3</span><span>Pré-révision : écarts N-1, comptes d’attente, lettrage</span><span class="mono">38 notes</span></li>
+              <li><span>4</span><span>Projets de PV d’AGO et de rapports de gestion</span><span class="mono">22 SAS/SARL</span></li>
+            </ol>
+            <div class="plan-foot"><span>Coût estimé <strong class="mono">41 €</strong></span><span>Plafond <strong class="mono">60 €</strong></span></div>
+            <div class="plan-actions" aria-hidden="true"><span class="go">Approuver</span><span>Recadrer</span><span>Rejeter</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="controle">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Contrôle</span>
+      <h2>Vous signez. Ils préparent.</h2>
+      <p class="lede">L’expert-comptable reste seul responsable de sa mission. Tout est conçu pour qu’il garde la main et la trace.</p>
+    </div>
+    <div class="grid4">
+      <div class="cell"><h3>Aucun envoi sans accord</h3><p>Un e-mail au client, à l’URSSAF ou au SIE attend votre validation. Les règles d’autonomie se règlent par agent.</p></div>
+      <div class="cell"><h3>Un prix avant le travail</h3><p>Chaque plan affiche son coût estimé et un plafond qu’il ne peut pas dépasser.</p></div>
+      <div class="cell"><h3>Lecture seule, vraiment</h3><p>Un plan en lecture seule ne peut ni passer d’écriture, ni envoyer, ni supprimer.</p></div>
+      <div class="cell"><h3>Piste d’audit complète</h3><p>Chaque action d’agent est tracée avec sa source et son coût, utile pour le dossier de travail et le contrôle qualité.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="agents">
+  <div class="wrap two">
+    <div class="sec-head" style="margin-bottom:0">
+      <span class="label">Agents</span>
+      <h2>Un agent personnel pour vous. Un agent par dossier client.</h2>
+      <p class="lede">L’agent personnel ne travaille que pour vous. Chaque dossier client a son propre agent, qui ne voit que ce client. Vous fixez leurs horaires, leur degré d’autonomie et les tâches qu’ils mènent sans qu’on le leur demande.</p>
+      <div class="agents-list">
+        <div class="agent"><div class="avatar" aria-hidden="true">B</div><div><strong>Basile</strong><p>suit la SARL Boulangerie Kerlan · révision, TVA, liasse</p></div></div>
+        <div class="agent"><div class="avatar" aria-hidden="true">M</div><div><strong>Margaux</strong><p>suit l’Atelier Morel · TVA mensuelle, social, prévisionnel</p></div></div>
+        <div class="agent"><div class="avatar" aria-hidden="true">O</div><div><strong>Octave</strong><p>suit la SCI Les Tilleuls · 2072, AG, déclarations des associés</p></div></div>
+      </div>
+    </div>
+    <div class="piece">
+      <div class="piece-head"><strong>Tâches planifiées</strong><span class="label">Agent de Yasmine</span></div>
+      <div class="piece-body">
+        <ul class="sched">
+          <li><span>Point du matin : échéances, pièces reçues, urgences</span><span class="when">jours ouvrés · 7 h 45</span></li>
+          <li><span>Relance des pièces manquantes</span><span class="when">chaque lundi</span></li>
+          <li><span>Contrôle des CA3 avant dépôt</span><span class="when">J-5 avant échéance</span></li>
+          <li><span>Rapprochement bancaire et lignes non lettrées</span><span class="when">chaque vendredi</span></li>
+          <li><span>Suivi des AG à tenir dans les six mois de la clôture</span><span class="when">chaque 1er du mois</span></li>
+          <li><span>Alerte trésorerie sur les dossiers sous surveillance</span><span class="when">chaque mercredi</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="canaux">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Canaux et logiciels</span>
+      <h2>Là où vous et vos clients échangez déjà.</h2>
+      <p class="lede">Vos clients envoient des photos de tickets sur WhatsApp et des relevés par e-mail. L’agent les récupère là où ils arrivent et les range là où ils doivent être.</p>
+    </div>
+    <div class="grid3">
+      <div class="cell"><h3>WhatsApp et Signal</h3><p>Un numéro dédié. Écrivez-lui comme à un collaborateur. Les clients peuvent y déposer leurs pièces.</p></div>
+      <div class="cell"><h3>Outlook et e-mail</h3><p>Il lit, trie, classe et rédige. Ce qu’il écrit en votre nom attend votre accord.</p></div>
+      <div class="cell"><h3>Word, Excel, Teams, iPhone</h3><p>Dans le document en cours, dans le canal de l’équipe, et pour approuver les plans en déplacement.</p></div>
+    </div>
+    <div class="integr" aria-label="Logiciels de production visés">
+      <span>Pennylane</span><span class="soon">Cegid · prévu</span><span class="soon">ACD · prévu</span><span class="soon">Tiime · prévu</span><span class="soon">Inqom · prévu</span><span class="soon">Silae · prévu</span>
+    </div>
+  </div>
+</section>
+
+<section id="securite">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="label">Sécurité et secret professionnel</span>
+      <h2>Où vivent les données de vos clients, et qui peut les voir.</h2>
+    </div>
+    <div class="grid3">
+      <div class="cell"><h3>Secret professionnel</h3><p>Conçu pour l’obligation de secret de l’article 21 de l’ordonnance de 1945. Chaque dossier est cloisonné : l’agent d’un client ne lit jamais les données d’un autre.</p></div>
+      <div class="cell"><h3>Hébergé en France</h3><p>Documents, mémoire des agents et journaux stockés en France. L’inférence passe par l’API des fournisseurs de modèles, en conservation zéro des données. Une inférence hébergée en Europe est l’objectif.</p></div>
+      <div class="cell"><h3>RGPD et LCB-FT</h3><p>Registre des traitements, DPA, durées de conservation publiées. Les pièces d’identification client restent dans le dossier et alimentent vos diligences de vigilance.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="fondatrice">
+  <div class="wrap founder">
+    <blockquote>« Notre métier, c’est le conseil. Ce n’est pas ce qui remplit nos journées. »</blockquote>
+    <div class="founder-text">
+      <span class="label">Qui le conçoit · Yasmine Sayo Lapié, expert-comptable, Sysco Consulting International</span>
+      <p>Ce qui remplit les journées, ce sont les relances de pièces que le client oublie, les relevés qui arrivent la veille de l’échéance, les mêmes questions de TVA posées par dix clients, les PV d’AG à refaire chaque printemps, et la boîte mail à trier le soir.</p>
+      <p>Et derrière tout cela, la charge de ne rien laisser passer : une échéance, une pièce, une incohérence dans un compte d’attente.</p>
+      <p>Clôture garde chaque dossier en tête, coordonne, prépare, et laisse à l’expert-comptable le jugement et la signature.</p>
+      <span class="todo">Texte à personnaliser avec votre propre parcours.</span>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head"><span class="label">FAQ</span><h2>Les questions que les associés posent en premier.</h2></div>
+    <div class="faq">
+      <details><summary>Un agent envoie-t-il des e-mails ou des déclarations sans mon accord ?</summary>
+        <p>Non. Tout envoi à un nouveau destinataire, et tout dépôt auprès d’une administration, attend votre validation. Vous pouvez autoriser certains envois récurrents, comme un accusé de réception de pièces, agent par agent.</p></details>
+      <details><summary>Que se passe-t-il en cas d’erreur ? Qui est responsable ?</summary>
+        <p>L’expert-comptable reste responsable de sa mission et de ses signatures, comme avec un collaborateur. L’agent prépare, vous validez. Chaque action est tracée avec sa source pour retrouver l’origine d’un écart.</p></details>
+      <details><summary>Comment un dossier client est-il cloisonné par rapport à un autre ?</summary>
+        <p>Chaque dossier a son agent, sa mémoire et ses droits d’accès. L’agent d’un client ne peut ni lire ni citer les pièces d’un autre client. Seul votre agent personnel voit l’ensemble de votre portefeuille.</p></details>
+      <details><summary>Quels modèles utilise-t-il ? Les données de mes clients servent-elles à l’entraînement ?</summary>
+        <p>Les modèles sont utilisés via API, en conservation zéro des données, et aucune donnée ne sert à l’entraînement. La liste des fournisseurs et des durées de conservation est publiée sur la page Sécurité.</p></details>
+      <details><summary>En quoi est-ce différent de mon logiciel de production ou de Copilot ?</summary>
+        <p>Le logiciel de production tient la comptabilité. Clôture travaille autour : e-mails, relances, documents, échéances, coordination de l’équipe. Il se connecte à votre logiciel au lieu de le remplacer, et il connaît chaque dossier dans la durée.</p></details>
+    </div>
+  </div>
+</section>
+
+<div class="cta">
+  <div class="wrap">
+    <div class="sec-head" style="margin-bottom:0">
+      <span class="label">Bêta privée</span>
+      <h2>Vous décidez. Ils préparent.</h2>
+      <p>Cabinets sélectionnés au fil de l’eau. Tarif sur demande.</p>
+    </div>
+    <div>
+      <form class="ask" id="ask2" novalidate>
+        <label for="email2">Adresse e-mail professionnelle</label>
+        <input id="email2" type="email" placeholder="vous@cabinet.fr" autocomplete="email" required>
+        <button class="btn" type="submit">Demander un accès</button>
+      </form>
+      <p class="form-note" id="note2" style="margin-top:10px">En demandant un accès, vous acceptez d’être contacté au sujet de la bêta.</p>
+    </div>
+  </div>
+</div>
+</main>
+
+<footer>
+  <div class="wrap"><span>Clôture · agents IA pour experts-comptables</span><span>Maquette · Sysco Consulting International · 2026</span></div>
+</footer>
+
+<script>
+["1","2"].forEach(function(n){
+  var f=document.getElementById("ask"+n), i=document.getElementById("email"+n), note=document.getElementById("note"+n);
+  f.addEventListener("submit",function(e){
+    e.preventDefault();
+    if(!i.value || !i.checkValidity()){ note.textContent="Saisissez une adresse e-mail valide, par exemple vous@cabinet.fr."; note.className="form-note"; i.focus(); return; }
+    note.textContent="Maquette : aucune demande n’est envoyée depuis cette page.";
+    note.className="form-ok";
+  });
+});
+</script>
+</body>
+</html>
