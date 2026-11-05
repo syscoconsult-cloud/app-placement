@@ -1,0 +1,53 @@
+{% extends "crm/base.html" %}
+{% block titre %}{% if client %}Modifier{% else %}Nouveau prospect{% endif %}{% endblock %}
+{% block contenu %}
+<h1>{% if client %}Modifier {{ client }}{% else %}Nouveau prospect{% endif %}</h1>
+<form method="post">
+  {% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="carte">
+    <h2>Contact</h2>
+    <div class="grille">
+      {% for f in form %}{% if f.name in "statut contact_prenom contact_nom fonction telephone email origine" %}
+      <div class="champ">{{ f.label_tag }}{{ f }}{{ f.errors }}{% if f.help_text %}<div class="aide">{{ f.help_text }}</div>{% endif %}</div>
+      {% endif %}{% endfor %}
+    </div>
+  </div>
+  <div class="carte">
+    <div class="ligne entre"><h2>Entité</h2></div>
+    <div class="ligne" style="margin-bottom:12px">
+      <div class="champ" style="flex:1">{{ form.siren.label_tag }}{{ form.siren }}{{ form.siren.errors }}</div>
+      <button type="button" class="bouton secondaire" id="btn-sirene" style="align-self:flex-end">Remplir depuis le SIREN</button>
+    </div>
+    <p id="sirene-info" class="aide"></p>
+    <div class="grille">
+      {% for f in form %}{% if f.name in "denomination forme_juridique adresse_siege code_naf activite date_creation" %}
+      <div class="champ">{{ f.label_tag }}{{ f }}{{ f.errors }}</div>
+      {% endif %}{% endfor %}
+      <div class="champ large">{{ form.notes.label_tag }}{{ form.notes }}</div>
+    </div>
+  </div>
+  <div class="ligne">
+    <button class="bouton">Enregistrer</button>
+    <a href="{% if client %}{% url 'fiche' client.pk %}{% else %}{% url 'liste' %}{% endif %}">Annuler</a>
+  </div>
+</form>
+<script>
+document.getElementById("btn-sirene").addEventListener("click", async () => {
+  const info = document.getElementById("sirene-info");
+  const siren = document.getElementById("id_siren").value;
+  info.textContent = "Recherche en cours…";
+  try {
+    const rep = await fetch("{% url 'api_sirene' '000000000' %}".replace("000000000", encodeURIComponent(siren.replace(/\s/g, ""))));
+    const d = await rep.json();
+    if (!rep.ok) { info.textContent = d.erreur; info.className = "erreur"; return; }
+    for (const champ of ["siren", "denomination", "forme_juridique", "adresse_siege", "code_naf", "date_creation"]) {
+      if (d[champ]) document.getElementById("id_" + champ).value = d[champ];
+    }
+    const dir = d.dirigeants.map(x => x.nom + (x.qualite ? " (" + x.qualite + ")" : "")).join(", ");
+    info.className = "aide";
+    info.textContent = "Entreprise " + d.etat.toLowerCase() + (dir ? " · Dirigeants : " + dir : "") + " · Pensez à vérifier et à saisir le capital.";
+  } catch (e) { info.textContent = "Service indisponible. Saisissez à la main."; info.className = "erreur"; }
+});
+</script>
+{% endblock %}

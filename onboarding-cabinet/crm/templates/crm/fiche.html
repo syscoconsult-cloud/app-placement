@@ -1,0 +1,62 @@
+{% extends "crm/base.html" %}
+{% block titre %}{{ client }}{% endblock %}
+{% block contenu %}
+<div class="ligne entre">
+  <h1>{{ client }} <span class="badge {{ client.statut }}">{{ client.get_statut_display }}</span></h1>
+  <a class="bouton secondaire" href="{% url 'modifier' client.pk %}">Modifier</a>
+</div>
+
+<div class="grille">
+  <div class="carte">
+    <h2>Contact</h2>
+    <dl>
+      <dt>Nom</dt><dd>{{ client.contact }}{% if client.fonction %} · {{ client.fonction }}{% endif %}</dd>
+      <dt>Téléphone</dt><dd>{{ client.telephone|default:"—" }}</dd>
+      <dt>E-mail</dt><dd>{% if client.email %}<a href="mailto:{{ client.email }}">{{ client.email }}</a>{% else %}—{% endif %}</dd>
+      <dt>Origine</dt><dd>{{ client.origine|default:"—" }}</dd>
+    </dl>
+  </div>
+  <div class="carte">
+    <h2>Entité</h2>
+    <dl>
+      <dt>SIREN</dt><dd>{{ client.siren|default:"—" }}</dd>
+      <dt>Forme juridique</dt><dd>{{ client.forme_juridique|default:"—" }}</dd>
+      <dt>Siège</dt><dd>{{ client.adresse_siege|default:"—" }}</dd>
+      <dt>NAF</dt><dd>{{ client.code_naf|default:"—" }}</dd>
+      <dt>Création</dt><dd>{{ client.date_creation|date:"d/m/Y"|default:"—" }}</dd>
+      {% if dirigeants %}<dt>Dirigeants</dt><dd>{% for d in dirigeants %}{{ d.nom }}{% if d.qualite %} ({{ d.qualite }}){% endif %}{% if not forloop.last %}<br>{% endif %}{% endfor %}</dd>{% endif %}
+    </dl>
+  </div>
+</div>
+
+<div class="carte">
+  <h2>Questionnaires</h2>
+  <table>
+    {% for q in questionnaires %}
+    <tr>
+      <td>{{ q.titre }}</td>
+      <td>{% if q.reponse.termine %}<span class="badge client">Terminé</span>{% elif q.reponse %}<span class="badge">En cours</span>{% else %}<span class="aide">Non commencé</span>{% endif %}</td>
+      <td class="aide">{% if q.reponse %}{{ q.reponse.modifie_le|date:"d/m/Y H:i" }}{% endif %}</td>
+      <td style="text-align:right"><a class="bouton secondaire" href="{% url 'questionnaire' client.pk q.nom %}">{% if q.reponse %}Ouvrir{% else %}Commencer{% endif %}</a></td>
+    </tr>
+    {% endfor %}
+    <tr><td colspan="4" class="aide">À venir : questionnaire LAB-FT, acceptation de mission, lettre de mission.</td></tr>
+  </table>
+</div>
+
+<div class="carte">
+  <h2>Échanges</h2>
+  <form method="post" action="{% url 'ajouter_echange' client.pk %}" class="grille" style="margin-bottom:16px">
+    {% csrf_token %}
+    <div class="champ">{{ echange_form.date.label_tag }}{{ echange_form.date }}</div>
+    <div class="champ">{{ echange_form.canal.label_tag }}{{ echange_form.canal }}</div>
+    <div class="champ large">{{ echange_form.resume.label_tag }}{{ echange_form.resume }}</div>
+    <div><button class="bouton">Ajouter l'échange</button></div>
+  </form>
+  {% for e in client.echanges.all %}
+  <p><strong>{{ e.date|date:"d/m/Y H:i" }}</strong> · {{ e.get_canal_display }}<br>{{ e.resume|linebreaksbr }}</p>
+  {% empty %}<p class="vide">Aucun échange enregistré.</p>{% endfor %}
+</div>
+
+{% if client.notes %}<div class="carte"><h2>Notes</h2>{{ client.notes|linebreaks }}</div>{% endif %}
+{% endblock %}

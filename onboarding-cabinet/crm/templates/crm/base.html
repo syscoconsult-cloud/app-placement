@@ -1,0 +1,19 @@
+{% load static %}<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titre %}Onboarding{% endblock %} · Cabinet</title>
+  <link rel="stylesheet" href="{% static 'crm/style.css' %}">
+</head>
+<body>
+  <header>
+    <a href="{% url 'liste' %}">Onboarding cabinet</a>
+    <a href="{% url 'nouveau' %}">+ Nouveau prospect</a>
+  </header>
+  <main>
+    {% if messages %}<ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+    {% block contenu %}{% endblock %}
+  </main>
+</body>
+</html>

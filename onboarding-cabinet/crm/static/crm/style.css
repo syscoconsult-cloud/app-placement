@@ -1,0 +1,39 @@
+:root {
+  --fond: #f6f7f9; --carte: #fff; --texte: #1d2433; --doux: #5b6476; --bord: #dfe3ea;
+  --accent: #1f4e8c; --accent-doux: #e8eef8; --ok: #1d7a46; --alerte: #a33a2b;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.5 "Segoe UI", system-ui, sans-serif; background: var(--fond); color: var(--texte); }
+header { background: var(--accent); color: #fff; padding: 12px 24px; display: flex; align-items: center; gap: 24px; }
+header a { color: #fff; text-decoration: none; font-weight: 600; }
+main { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+h1 { font-size: 22px; margin: 0 0 16px; }
+h2 { font-size: 17px; margin: 0 0 12px; }
+a { color: var(--accent); }
+.carte { background: var(--carte); border: 1px solid var(--bord); border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.ligne { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.entre { justify-content: space-between; }
+.bouton { display: inline-block; background: var(--accent); color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; text-decoration: none; }
+.bouton.secondaire { background: var(--accent-doux); color: var(--accent); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--bord); vertical-align: top; }
+th { color: var(--doux); font-weight: 600; font-size: 13px; }
+input, select, textarea { font: inherit; padding: 7px 9px; border: 1px solid var(--bord); border-radius: 6px; width: 100%; background: #fff; }
+input[type=radio], input[type=checkbox] { width: auto; }
+.grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 20px; }
+.champ label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+.champ ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.champ ul label { font-weight: 400; display: inline; }
+.champ.large { grid-column: 1 / -1; }
+.aide { color: var(--doux); font-size: 12px; }
+.erreur, .errorlist { color: var(--alerte); font-size: 13px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: var(--accent-doux); color: var(--accent); }
+.badge.client { background: #e3f3ea; color: var(--ok); }
+.badge.perdu { background: #f6e5e2; color: var(--alerte); }
+.messages { list-style: none; padding: 0; margin: 0 0 16px; }
+.messages li { background: #e3f3ea; color: var(--ok); padding: 10px 14px; border-radius: 6px; }
+.messages li.error { background: #f6e5e2; color: var(--alerte); }
+dl { display: grid; grid-template-columns: 170px 1fr; gap: 6px 12px; margin: 0; }
+dt { color: var(--doux); }
+dd { margin: 0; }
+.vide { color: var(--doux); font-style: italic; }

@@ -1,0 +1,35 @@
+{
+  "titre": "Prise de connaissance",
+  "version": "exemple-1",
+  "note": "QUESTIONS D'EXEMPLE : à remplacer par vos questions Notion.",
+  "sections": [
+    {
+      "titre": "Activité",
+      "questions": [
+        {"id": "activite_description", "libelle": "Décrivez votre activité en quelques mots", "type": "texte_long"},
+        {"id": "clientele", "libelle": "Type de clientèle", "type": "choix", "options": ["Particuliers (B2C)", "Professionnels (B2B)", "Les deux", "Secteur public"]},
+        {"id": "chiffre_affaires", "libelle": "Chiffre d'affaires annuel estimé (€)", "type": "nombre"},
+        {"id": "effectif", "libelle": "Nombre de salariés", "type": "nombre"},
+        {"id": "international", "libelle": "Activité ou flux financiers à l'international ?", "type": "oui_non"}
+      ]
+    },
+    {
+      "titre": "Organisation comptable",
+      "questions": [
+        {"id": "outil_comptable", "libelle": "Quel outil comptable utilisez-vous ?", "type": "choix", "options": ["Aucun", "Pennylane", "Tiime", "Excel", "Autre"]},
+        {"id": "banques", "libelle": "Banque(s) utilisée(s)", "type": "texte"},
+        {"id": "expert_comptable_precedent", "libelle": "Aviez-vous un expert-comptable auparavant ?", "type": "oui_non"},
+        {"id": "motif_changement", "libelle": "Si oui, pourquoi changer ?", "type": "texte_long"},
+        {"id": "date_cloture", "libelle": "Date de clôture de l'exercice", "type": "texte"}
+      ]
+    },
+    {
+      "titre": "Besoins",
+      "questions": [
+        {"id": "missions_souhaitees", "libelle": "Missions souhaitées", "type": "choix_multiple", "options": ["Tenue comptable", "Révision / comptes annuels", "Social / paie", "Juridique annuel", "Conseil / prévisionnel", "Création d'entreprise"]},
+        {"id": "budget", "libelle": "Budget envisagé (€ HT / mois)", "type": "nombre"},
+        {"id": "date_demarrage", "libelle": "Date de démarrage souhaitée", "type": "date"}
+      ]
+    }
+  ]
+}
