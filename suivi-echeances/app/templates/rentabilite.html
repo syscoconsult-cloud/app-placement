@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block titre %}Rentabilité{% endblock %}
+{% block contenu %}
+<div class="entete"><h1>Rentabilité des dossiers</h1></div>
+<form class="filtres" method="get">
+  <label>Mois <input type="month" name="mois" value="{{ mois }}"></label>
+  <label>Période <select name="cumul"><option value="0">Le mois seul</option><option value="1" {{ 'selected' if cumul }}>Cumul depuis janvier</option></select></label>
+  <label>Chiffre d'affaires <select name="ca">
+    <option value="facture">Factures émises sur la période</option>
+    <option value="lisse" {{ 'selected' if ca_mode == 'lisse' }}>Honoraires annuels lissés</option></select></label>
+  <button type="submit">Calculer</button>
+</form>
+<p class="discret">Période du {{ debut.strftime('%d/%m/%Y') }} au {{ fin.strftime('%d/%m/%Y') }}.
+  {% if ca_mode == 'facture' %}CA = factures du cabinet {{ 'converties en HT (montants Pennylane TTC ÷ 1,2)' if factures_ttc else 'telles que fournies par Pennylane' }}.{% endif %}
+  Coût = heures × coût horaire du collaborateur. Temps perdu = activités cochées dans Paramètres.</p>
+{% if sans_taux %}<div class="flash erreur">{{ sans_taux }} collaborateur(s) ayant saisi des temps n'ont pas de coût horaire : leur temps est compté à 0 €. <a href="{{ url_for('views.collaborateurs') }}">Renseigner les coûts horaires</a>.</div>{% endif %}
+
+<div class="grille">
+  <div class="carte kpi"><div class="valeur">{{ totaux.ca | euros }}</div><div class="titre">Chiffre d'affaires</div></div>
+  <div class="carte kpi"><div class="valeur">{{ totaux.heures | heures }}</div><div class="titre">Temps passé</div></div>
+  <div class="carte kpi"><div class="valeur">{{ totaux.cout | euros }}</div><div class="titre">Coût du temps</div></div>
+  <div class="carte kpi {{ 'vert' if totaux.marge >= 0 else 'rouge' }}"><div class="valeur">{{ totaux.marge | euros }}</div><div class="titre">Marge</div></div>
+  <div class="carte kpi"><div class="valeur">{{ (totaux.taux_reel | euros) ~ ('/h' if totaux.taux_reel) }}</div><div class="titre">CA par heure passée</div></div>
+  <div class="carte kpi orange"><div class="valeur">{{ totaux.heures_perdues | heures }}</div><div class="titre">Temps perdu</div></div>
+</div>
+
+<h2>Par dossier <span class="discret">(du moins rentable au plus rentable)</span></h2>
+<div class="defile"><table class="tableau">
+  <tr><th>Dossier</th><th class="nombre">CA</th><th class="nombre">Heures</th><th class="nombre masque-mobile">Non facturables</th>
+      <th class="nombre">Temps perdu</th><th class="nombre masque-mobile">Budget</th><th class="nombre">Coût</th><th class="nombre">Marge</th>
+      <th class="nombre">CA / heure</th><th class="masque-mobile">Répartition du temps</th></tr>
+  {% for l in lignes %}
+  <tr>
+    <td><a href="{{ url_for('views.dossier', dossier_id=l.dossier.id) }}">{{ l.dossier.nom }}</a>
+        <div class="discret">{{ l.dossier.collaborateur or '' }}</div></td>
+    <td class="nombre">{{ l.ca | euros }}</td>
+    <td class="nombre">{{ l.heures | heures }}</td>
+    <td class="nombre masque-mobile">{{ (l.heures - l.heures_facturables) | heures }}</td>
+    <td class="nombre">{{ l.heures_perdues | heures }}</td>
+    <td class="nombre masque-mobile">{% if l.budget is not none %}{{ l.budget | heures }}{% if l.depassement %}<div class="negatif">+{{ l.depassement | heures }}</div>{% endif %}{% else %}—{% endif %}</td>
+    <td class="nombre">{{ l.cout | euros }}{% if l.taux_manquant %} <span title="Coût horaire manquant pour un collaborateur">⚠</span>{% endif %}</td>
+    <td class="nombre {{ 'negatif' if l.marge < 0 else 'positif' }}">{{ l.marge | euros }}{% if l.marge_pct is not none %}<div class="discret">{{ '%.0f' % l.marge_pct }} %</div>{% endif %}</td>
+    <td class="nombre">{{ (l.taux_reel | euros) ~ ('/h' if l.taux_reel) }}</td>
+    <td class="masque-mobile discret">{% for nom, h in l.par_collaborateur %}{{ nom }} : {{ h | heures }}{{ '' if loop.last else ' · ' }}{% endfor %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="10" class="discret">Aucune donnée sur la période.</td></tr>
+  {% endfor %}
+</table></div>
+
+<h2>Par collaborateur</h2>
+<div class="defile"><table class="tableau">
+  <tr><th>Collaborateur</th><th class="nombre">Coût horaire</th><th class="nombre">Heures</th><th class="nombre">Facturables</th>
+      <th class="nombre">Temps perdu</th><th class="nombre">Coût</th></tr>
+  {% for nom, c in collaborateurs %}
+  <tr><td>{{ nom }}</td><td class="nombre">{{ c.taux | euros if c.taux is not none else '⚠ non renseigné' }}</td>
+      <td class="nombre">{{ c.heures | heures }}</td><td class="nombre">{{ c.heures_facturables | heures }}</td>
+      <td class="nombre">{{ c.heures_perdues | heures }}</td><td class="nombre">{{ c.cout | euros }}</td></tr>
+  {% else %}
+  <tr><td colspan="6" class="discret">Aucun temps saisi sur la période.</td></tr>
+  {% endfor %}
+</table></div>
+
+{% if non_rapproches %}
+<h2>Clients non rattachés à un dossier</h2>
+<p class="discret">Ces temps et factures ne sont comptés dans aucun dossier. Rattachez-les dans <a href="{{ url_for('views.parametres') }}">Paramètres</a>.</p>
+<div class="defile"><table class="tableau">
+  <tr><th>Client</th><th class="nombre">Heures</th><th class="nombre">Factures</th></tr>
+  {% for r in non_rapproches %}<tr><td>{{ r.nom }}</td><td class="nombre">{{ ((r.duree_s or 0) / 3600) | heures }}</td><td class="nombre">{{ (r.montant or 0) | euros }}</td></tr>{% endfor %}
+</table></div>
+{% endif %}
+{% endblock %}

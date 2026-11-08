@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titre %}Collaborateurs{% endblock %}
+{% block contenu %}
+<h1>Collaborateurs</h1>
+<p class="discret">Les collaborateurs responsables de dossiers dans Pennylane sont créés automatiquement, sans mot de passe : définissez-en un pour leur ouvrir l'accès.
+Le coût horaire (salaire chargé ÷ heures travaillées par an) sert au calcul de rentabilité.</p>
+<div class="defile"><table class="tableau">
+  <tr><th>Nom</th><th>E-mail</th><th>Rôle</th><th class="nombre">Coût horaire (€)</th><th>Actif</th><th>Nouveau mot de passe</th><th></th></tr>
+  {% for u in users + [none] %}
+  {% set f = 'u-' ~ (u.id if u else 'nouveau') %}
+  <tr>
+    <td><form method="post" id="{{ f }}">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          {% if u %}<input type="hidden" name="id" value="{{ u.id }}">{% endif %}
+        </form>
+        <input form="{{ f }}" name="nom" value="{{ u.nom if u else '' }}" placeholder="{{ 'Nouveau collaborateur' if not u }}" required></td>
+    <td><input form="{{ f }}" type="email" name="email" value="{{ u.email if u else '' }}" required></td>
+    <td><select form="{{ f }}" name="role">{% for r, l in [('collaborateur', 'Collaborateur'), ('admin', 'Administrateur')] %}<option value="{{ r }}" {{ 'selected' if u and u.role == r }}>{{ l }}</option>{% endfor %}</select></td>
+    <td class="nombre"><input form="{{ f }}" name="taux_horaire" inputmode="decimal" size="6" value="{{ u.taux_horaire if u and u.taux_horaire is not none else '' }}"></td>
+    <td><input form="{{ f }}" type="checkbox" name="actif" value="1" {{ 'checked' if not u or u.actif }}></td>
+    <td><input form="{{ f }}" type="password" name="mot_de_passe" autocomplete="new-password" placeholder="{{ 'défini' if u and u.password_hash else 'aucun' }}"></td>
+    <td><button form="{{ f }}" type="submit">{{ 'Enregistrer' if u else 'Ajouter' }}</button></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

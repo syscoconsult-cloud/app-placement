@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titre %}Dossiers{% endblock %}
+{% block contenu %}
+<div class="entete">
+  <h1>Dossiers</h1>
+  <a class="bouton" href="{{ url_for('views.nouveau_dossier') }}">+ Nouveau dossier</a>
+</div>
+<p class="discret">Les dossiers français sont importés de Pennylane à chaque synchronisation. Les dossiers hors Pennylane (Bénin notamment) se créent ici.</p>
+<div class="defile"><table class="tableau">
+  <tr><th>Dossier</th><th>Pays</th><th class="masque-mobile">Forme</th><th class="masque-mobile">Clôture</th>
+      <th class="masque-mobile">TVA</th><th>Responsable</th><th class="nombre">En retard</th><th class="nombre">Prochaine échéance</th></tr>
+  {% for d in dossiers %}
+  <tr {% if not d.actif %}class="discret"{% endif %}>
+    <td><a href="{{ url_for('views.dossier', dossier_id=d.id) }}">{{ d.nom }}</a>
+        {% if d.pennylane_id %}<span class="discret"> · Pennylane</span>{% endif %}{% if not d.actif %} (archivé){% endif %}</td>
+    <td>{{ d.pays }}</td>
+    <td class="masque-mobile">{{ d.forme or '—' }}</td>
+    <td class="masque-mobile">{{ d.cloture | date_fr }}</td>
+    <td class="masque-mobile">{{ d.regime_tva or '—' }}</td>
+    <td>{{ d.collaborateur or '—' }}</td>
+    <td class="nombre">{% if d.en_retard %}<span class="pastille retard">{{ d.en_retard }}</span>{% else %}0{% endif %}</td>
+    <td class="nombre">{{ d.prochaine | date_fr }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="8" class="discret">Aucun dossier : lancez une synchronisation Pennylane (Paramètres) ou créez un dossier.</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

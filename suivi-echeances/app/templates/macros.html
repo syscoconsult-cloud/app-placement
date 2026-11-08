@@ -1,0 +1,32 @@
+{% macro tableau_echeances(echeances, avec_dossier=true) %}
+<div class="defile"><table class="tableau">
+  <tr><th>Date limite</th><th>Alerte</th>{% if avec_dossier %}<th>Dossier</th>{% endif %}<th>Échéance</th>
+      <th class="masque-mobile">Responsable</th><th>Statut</th></tr>
+  {% for e in echeances %}
+  <tr>
+    <td class="nombre">{{ e.date_limite | date_fr }}</td>
+    <td><span class="pastille {{ e.niveau }}">{{ LIBELLES_ALERTE[e.niveau] }}</span></td>
+    {% if avec_dossier %}<td><a href="{{ url_for('views.dossier', dossier_id=e.dossier_id) }}">{{ e.dossier }}</a></td>{% endif %}
+    <td>
+      <span class="pastille cat">{{ e.categorie }}</span> {{ e.libelle }}
+      {% if e.anomalie %}<div class="anomalie">⚠ {{ e.anomalie }}</div>{% endif %}
+      {% if e.source == 'pennylane' %}<div class="discret">Statut lu dans Pennylane{% if e.date_realisation %} · déposée le {{ e.date_realisation | date_fr }}{% endif %}</div>{% endif %}
+      {% if e.portail %}<div class="discret"><a href="{{ e.portail }}" target="_blank" rel="noopener">Ouvrir le portail ↗</a></div>{% endif %}
+    </td>
+    <td class="masque-mobile">{{ e.collaborateur or '—' }}</td>
+    <td>
+      <form method="post" action="{{ url_for('views.maj_echeance', echeance_id=e.id) }}" class="ligne">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <select name="statut" aria-label="Statut">
+          {% for s in ['À faire', 'En cours', 'Fait'] %}<option {{ 'selected' if s == e.statut }}>{{ s }}</option>{% endfor %}
+        </select>
+        <input type="text" name="commentaire" value="{{ e.commentaire or '' }}" placeholder="Commentaire" size="14">
+        <button type="submit">OK</button>
+      </form>
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="discret">Aucune échéance.</td></tr>
+  {% endfor %}
+</table></div>
+{% endmacro %}

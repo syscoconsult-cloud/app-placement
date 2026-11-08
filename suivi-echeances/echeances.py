@@ -159,14 +159,16 @@ def generer(dos, du, au):
     ref = {r[0]: r for r in REFERENTIEL}
     lignes = []
 
-    def ajout(code, date_brute, periode, titre=None):
+    def ajout(code, date_brute, periode, fin=None):
+        """fin : dernier jour de la période couverte (sert au rapprochement avec Pennylane)."""
         d = jour_ouvre(date_brute, pays)
         if du <= d <= au:
             r = ref[code]
             lignes.append({
-                "echeance": f"{titre or r[1]} — {periode}",
+                "echeance": f"{r[1]} — {periode}",
                 "dossier": dos["dossier"], "code": code, "categorie": r[3], "pays": pays,
-                "date_limite": d.isoformat(), "periode": periode, "portail": r[7],
+                "date_limite": d.isoformat(), "periode": periode,
+                "periode_fin": fin.isoformat() if fin else None, "portail": r[7],
             })
 
     # Exercices : celui qui se clôture à la date indiquée, le précédent et le suivant.
@@ -183,15 +185,16 @@ def generer(dos, du, au):
     for a, m in mois_entre(ajouter_mois(du, -3), au):
         suiv = ajouter_mois(date(a, m, 1), 1)
         periode = f"{MOIS[m - 1]} {a}"
+        fin_mois = fin_de_mois(date(a, m, 1))
         if pays == "France":
             if tva == "Mensuel (CA3)":
-                ajout("FR-TVA-M", jour_du_mois(suiv.year, suiv.month, jour_tva), periode)
+                ajout("FR-TVA-M", jour_du_mois(suiv.year, suiv.month, jour_tva), periode, fin_mois)
             if tva == "Trimestriel (CA3)" and m % 3 == 0:
-                ajout("FR-TVA-T", jour_du_mois(suiv.year, suiv.month, jour_tva), f"T{m // 3} {a}")
+                ajout("FR-TVA-T", jour_du_mois(suiv.year, suiv.month, jour_tva), f"T{m // 3} {a}", fin_mois)
             if tva == "Simplifié (CA12)" and m in (7, 12):
                 ajout("FR-TVA-CA12-AC", jour_du_mois(a, m, jour_tva), f"acompte {MOIS[m - 1]} {a}")
             if dos.get("salaries"):
-                ajout("FR-DSN", date(suiv.year, suiv.month, 5 if effectif >= 50 else 15), periode)
+                ajout("FR-DSN", date(suiv.year, suiv.month, 5 if effectif >= 50 else 15), periode, fin_mois)
             if dos.get("cfe"):
                 if m == 6 and dos.get("acompte_cfe"):
                     ajout("FR-CFE-AC", date(a, 6, 15), str(a))
@@ -203,14 +206,14 @@ def generer(dos, du, au):
                 ajout("FR-CVAE", deuxieme_jour_ouvre_apres_1er_mai(a), f"CVAE {a - 1}")
         else:
             if tva == "Mensuel (Bénin)":
-                ajout("BJ-TVA", jour_du_mois(suiv.year, suiv.month, jour_tva), periode)
+                ajout("BJ-TVA", jour_du_mois(suiv.year, suiv.month, jour_tva), periode, fin_mois)
             if dos.get("salaries"):
-                ajout("BJ-ITS", date(suiv.year, suiv.month, 10), periode)
+                ajout("BJ-ITS", date(suiv.year, suiv.month, 10), periode, fin_mois)
                 if effectif >= 20:
-                    ajout("BJ-CNSS", date(suiv.year, suiv.month, 15), periode)
+                    ajout("BJ-CNSS", date(suiv.year, suiv.month, 15), periode, fin_mois)
                 elif m % 3 == 0:
-                    ajout("BJ-CNSS", date(suiv.year, suiv.month, 15), f"T{m // 3} {a}")
-            ajout("BJ-AIB", date(suiv.year, suiv.month, 10), periode)
+                    ajout("BJ-CNSS", date(suiv.year, suiv.month, 15), f"T{m // 3} {a}", fin_mois)
+            ajout("BJ-AIB", date(suiv.year, suiv.month, 10), periode, fin_mois)
             if regime == "IS" and m in (3, 6, 9, 12):
                 ajout("BJ-IS-AC", date(a, m, 10), f"acompte {MOIS[m - 1]} {a}")
 
@@ -221,8 +224,8 @@ def generer(dos, du, au):
         if pays == "France":
             liasse = (deuxieme_jour_ouvre_apres_1er_mai(c.year + 1) if cal
                       else fin_de_mois(ajouter_mois(c, 3))) + timedelta(days=15)
-            ajout("FR-LIASSE", liasse, ex)
-            ajout("FR-DAS2", liasse, ex)
+            ajout("FR-LIASSE", liasse, ex, c)
+            ajout("FR-DAS2", liasse, ex, c)
             if regime == "IS":
                 debut = c - timedelta(days=364)
                 for k in (2, 5, 8, 11):
@@ -230,22 +233,22 @@ def generer(dos, du, au):
                     ajout("FR-IS-AC", date(mois_ac.year, mois_ac.month, 15),
                           f"acompte {MOIS[mois_ac.month - 1]} {mois_ac.year}")
                 solde = date(c.year + 1, 5, 15) if cal else jour_du_mois(*_am(c, 4), 15)
-                ajout("FR-IS-SOLDE", solde, ex)
+                ajout("FR-IS-SOLDE", solde, ex, c)
             if tva == "Simplifié (CA12)":
                 ajout("FR-TVA-CA12", deuxieme_jour_ouvre_apres_1er_mai(c.year + 1) if cal
-                      else fin_de_mois(ajouter_mois(c, 3)), ex)
-            ajout("FR-CPTES", fin_de_mois(ajouter_mois(c, 3)), ex)
+                      else fin_de_mois(ajouter_mois(c, 3)), ex, c)
+            ajout("FR-CPTES", fin_de_mois(ajouter_mois(c, 3)), ex, c)
             if societe:
-                ajout("FR-AG", fin_de_mois(ajouter_mois(c, 6)), ex)
+                ajout("FR-AG", fin_de_mois(ajouter_mois(c, 6)), ex, c)
             if dos.get("depot_comptes"):
-                ajout("FR-DEPOT", fin_de_mois(ajouter_mois(c, 7)), ex)
+                ajout("FR-DEPOT", fin_de_mois(ajouter_mois(c, 7)), ex, c)
         else:
-            ajout("BJ-DSF", date(c.year + 1, 4, 30), ex)
-            ajout("BJ-CPTES", fin_de_mois(ajouter_mois(c, 3)), ex)
+            ajout("BJ-DSF", date(c.year + 1, 4, 30), ex, c)
+            ajout("BJ-CPTES", fin_de_mois(ajouter_mois(c, 3)), ex, c)
             if societe:
-                ajout("BJ-AG", fin_de_mois(ajouter_mois(c, 6)), ex)
+                ajout("BJ-AG", fin_de_mois(ajouter_mois(c, 6)), ex, c)
             if dos.get("depot_comptes"):
-                ajout("BJ-RCCM", fin_de_mois(ajouter_mois(c, 7)), ex)
+                ajout("BJ-RCCM", fin_de_mois(ajouter_mois(c, 7)), ex, c)
 
     # Dédoublonnage (un même acompte peut être vu depuis deux exercices).
     uniques = {(l["code"], l["date_limite"]): l for l in lignes}

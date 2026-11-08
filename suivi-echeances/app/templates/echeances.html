@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "macros.html" import tableau_echeances with context %}
+{% block titre %}Échéances{% endblock %}
+{% block contenu %}
+<div class="entete">
+  <h1>Échéances {% if filtres.alerte != 'retard' %}— {{ libelle_mois(mois) }}{% else %}en retard{% endif %}</h1>
+  {% if filtres.alerte != 'retard' %}
+  <div class="nav-mois">
+    <a class="bouton secondaire" href="{{ url_for('views.echeances', **dict(filtres, mois=mois_prec)) }}">← Mois précédent</a>
+    <a class="bouton secondaire" href="{{ url_for('views.echeances', **dict(filtres, mois=mois_suiv)) }}">Mois suivant →</a>
+  </div>
+  {% endif %}
+</div>
+<form class="filtres" method="get">
+  <input type="hidden" name="mois" value="{{ mois }}">
+  <label>Dossier <select name="dossier"><option value="">Tous</option>
+    {% for d in dossiers %}<option value="{{ d.id }}" {{ 'selected' if filtres.dossier == d.id|string }}>{{ d.nom }}</option>{% endfor %}</select></label>
+  <label>Responsable <select name="collaborateur"><option value="">Tous</option>
+    {% for c in collaborateurs %}<option value="{{ c.id }}" {{ 'selected' if filtres.collaborateur == c.id|string }}>{{ c.nom }}</option>{% endfor %}</select></label>
+  <label>Catégorie <select name="categorie"><option value="">Toutes</option>
+    {% for c in categories %}<option {{ 'selected' if filtres.categorie == c }}>{{ c }}</option>{% endfor %}</select></label>
+  <label>Pays <select name="pays"><option value="">Tous</option>
+    {% for p in ['France', 'Bénin'] %}<option {{ 'selected' if filtres.pays == p }}>{{ p }}</option>{% endfor %}</select></label>
+  <label>Statut <select name="statut"><option value="">Tous</option>
+    {% for s in statuts %}<option {{ 'selected' if filtres.statut == s }}>{{ s }}</option>{% endfor %}</select></label>
+  <label>Alerte <select name="alerte"><option value="">Toutes</option>
+    {% for k, v in LIBELLES_ALERTE.items() %}<option value="{{ k }}" {{ 'selected' if filtres.alerte == k }}>{{ v }}</option>{% endfor %}</select></label>
+  <button type="submit">Filtrer</button>
+  <a class="bouton secondaire" href="{{ url_for('views.echeances', mois=mois) }}">Réinitialiser</a>
+</form>
+{{ tableau_echeances(echeances) }}
+{% endblock %}

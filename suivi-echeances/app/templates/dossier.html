@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "macros.html" import tableau_echeances with context %}
+{% block titre %}{{ dossier.nom or 'Nouveau dossier' }}{% endblock %}
+{% block contenu %}
+<h1>{{ dossier.nom or 'Nouveau dossier' }}</h1>
+{% if dossier.pennylane_id %}
+<p class="discret">Dossier synchronisé avec Pennylane : nom, forme, clôture, régime de TVA et responsable sont mis à jour automatiquement. Les autres champs se gèrent ici.</p>
+{% endif %}
+<form method="post" class="carte">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <div class="champs">
+    <label>Nom du dossier <input name="nom" value="{{ dossier.nom or '' }}" required></label>
+    <label>Pays <select name="pays">{% for p in ['France', 'Bénin'] %}<option {{ 'selected' if dossier.pays == p }}>{{ p }}</option>{% endfor %}</select></label>
+    <label>Forme juridique <select name="forme"><option value="">—</option>{% for f in formes %}<option {{ 'selected' if dossier.forme == f }}>{{ f }}</option>{% endfor %}</select></label>
+    <label>SIREN / IFU <input name="siren" value="{{ dossier.siren or '' }}"></label>
+    <label>Date de clôture de l'exercice en cours <input type="date" name="cloture" value="{{ dossier.cloture or '' }}"></label>
+    <label>Régime d'imposition <select name="regime_imposition"><option value="">—</option>{% for r in regimes_imposition %}<option {{ 'selected' if dossier.regime_imposition == r }}>{{ r }}</option>{% endfor %}</select></label>
+    <label>Régime de TVA <select name="regime_tva"><option value="">—</option>{% for r in regimes_tva %}<option {{ 'selected' if dossier.regime_tva == r }}>{{ r }}</option>{% endfor %}</select></label>
+    <label>Jour limite de TVA (15 à 24 ; Bénin : 10) <input type="number" min="1" max="31" name="jour_tva" value="{{ dossier.jour_tva or '' }}"></label>
+    <label>Effectif <input type="number" min="0" name="effectif" value="{{ dossier.effectif if dossier.effectif is not none else '' }}"></label>
+    <label>Responsable <select name="collaborateur_id"><option value="">—</option>{% for c in collaborateurs %}<option value="{{ c.id }}" {{ 'selected' if dossier.collaborateur_id == c.id }}>{{ c.nom }}</option>{% endfor %}</select></label>
+    <label>Budget annuel d'heures <input name="budget_heures" inputmode="decimal" value="{{ dossier.budget_heures or '' }}"></label>
+    <label>Honoraires annuels HT (€) <input name="honoraires_annuels" inputmode="decimal" value="{{ dossier.honoraires_annuels or '' }}"></label>
+    {% for champ, libelle in [('salaries', 'Salariés'), ('cfe', 'CFE'), ('acompte_cfe', 'Acompte CFE (CFE N-1 ≥ 3 000 €)'), ('cvae', 'CVAE'), ('depot_comptes', 'Dépôt des comptes (greffe / RCCM)'), ('actif', 'Dossier actif')] %}
+    <label class="case"><input type="checkbox" name="{{ champ }}" value="1" {{ 'checked' if dossier[champ] }}> {{ libelle }}</label>
+    {% endfor %}
+    <label style="grid-column: 1 / -1">Notes <textarea name="notes" rows="2">{{ dossier.notes or '' }}</textarea></label>
+  </div>
+  <p><button type="submit">Enregistrer et recalculer les échéances</button></p>
+</form>
+{% if dossier.id %}
+<h2>Échéances du dossier</h2>
+{{ tableau_echeances(echeances, avec_dossier=false) }}
+{% endif %}
+{% endblock %}

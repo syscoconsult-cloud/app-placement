@@ -1,0 +1,38 @@
+{
+  "dossiers": [
+    {"id": 1001, "name": "ALPHA AUTO", "display_name": "ALPHA AUTO", "legal_form": "fr_sas", "siren": "900000001",
+     "vat_frequency": "monthly", "vat_regime": "standard", "number_of_employees": "individual",
+     "current_fiscal_year": {"start": "2026-01-01", "finish": "2026-12-31"},
+     "accountant": {"id": 501, "email": "jean.compta@cabinet.test", "full_name": "JEAN COMPTA"}},
+    {"id": 1002, "name": "MARTIN DUPONT", "display_name": "Cabinet Beta (MARTIN DUPONT)", "trade_name": "Cabinet Beta",
+     "legal_form": "fr_eirl", "siren": "900000002", "vat_frequency": "yearly", "vat_regime": "simplified",
+     "number_of_employees": "individual", "current_fiscal_year": {"start": "2026-01-01", "finish": "2026-12-31"},
+     "accountant": {"id": 502, "email": "lea.revision@cabinet.test", "full_name": "LEA REVISION"}}
+  ],
+  "tva": {
+    "1001": [
+      {"period_start": "2026-09-01", "period_end": "2026-09-30", "due_date": "2026-10-24", "submitted_at": "2026-10-20", "status": "accepted"},
+      {"period_start": "2026-10-01", "period_end": "2026-10-31", "due_date": "2026-11-24", "submitted_at": "2026-11-05", "status": "rejected"}
+    ]
+  },
+  "liasses": {
+    "1001": [{"period_start": "2025-01-01", "period_end": "2025-12-31", "fiscal_category": "is", "status": "accepted", "teledec_status": "Accepted"}],
+    "1002": [{"period_start": "2025-01-01", "period_end": "2025-12-31", "fiscal_category": "bnc", "status": "accepted", "teledec_status": "Accepted"}]
+  },
+  "temps": [
+    {"id": 1, "date": "2026-10-05", "billable": false, "duration": 18000, "thirdparty": {"id": 9001, "name": "ALPHA AUTO"},
+     "user": {"id": 501, "full_name": "JEAN COMPTA", "email": "jean.compta@cabinet.test"},
+     "timesheets_activity": {"code": "1.2", "name": "Apurement et révision", "activity_group": {"name": "Comptabilité"}}},
+    {"id": 2, "date": "2026-10-06", "billable": true, "duration": 7200, "thirdparty": {"id": 9001, "name": "ALPHA AUTO"},
+     "user": {"id": 502, "full_name": "LEA REVISION", "email": "lea.revision@cabinet.test"},
+     "timesheets_activity": {"code": "1.5", "name": "Relance des pièces", "activity_group": {"name": "Comptabilité"}}},
+    {"id": 3, "date": "2026-10-07", "billable": false, "duration": 3600, "thirdparty": {"id": 9002, "name": "Client Inconnu"},
+     "user": {"id": 502, "full_name": "LEA REVISION", "email": "lea.revision@cabinet.test"},
+     "timesheets_activity": {"code": "1.2", "name": "Apurement et révision", "activity_group": {"name": "Comptabilité"}}}
+  ],
+  "factures": [
+    {"id": "70001", "date": "2026-10-20", "label": "Facture ALPHA AUTO - F-2026-910", "amount": "360.0"},
+    {"id": "70002", "date": "2026-10-20", "label": "Facture Cabinet Beta - F-2026-911", "amount": "240.0"},
+    {"id": "70003", "date": "2026-10-21", "label": "Avoir ALPHA AUTO - F-2026-912", "amount": "-60.0"}
+  ]
+}

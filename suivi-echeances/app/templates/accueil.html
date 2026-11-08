@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "macros.html" import tableau_echeances with context %}
+{% block titre %}Tableau de bord{% endblock %}
+{% block contenu %}
+<div class="entete">
+  <h1>Tableau de bord</h1>
+  <div>
+    {% if tous %}<a class="bouton secondaire" href="?tous=0">Voir mes dossiers</a>
+    {% else %}<a class="bouton secondaire" href="?tous=1">Voir tout le cabinet</a>{% endif %}
+  </div>
+</div>
+<div class="grille">
+  <div class="carte kpi rouge"><div class="valeur">{{ compteurs.retard }}</div><div class="titre">En retard ou en anomalie</div></div>
+  <div class="carte kpi orange"><div class="valeur">{{ compteurs.proche }}</div><div class="titre">À traiter sous 7 jours</div></div>
+  <div class="carte kpi vert"><div class="valeur">{{ compteurs.mois_faits }} / {{ compteurs.mois_total }}</div><div class="titre">Échéances faites en {{ libelle_mois(mois) | lower }}</div></div>
+</div>
+<p class="discret">
+  {% if derniere_sync %}Dernière synchronisation Pennylane : {{ derniere_sync.debut | horodatage }} ({{ derniere_sync.statut }}).
+  {% else %}Pas encore de synchronisation avec Pennylane.{% endif %}
+</p>
+<h2>À traiter dans les 30 prochains jours</h2>
+{{ tableau_echeances(echeances) }}
+{% endblock %}

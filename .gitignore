@@ -2,3 +2,8 @@ config.js
 .DS_Store
 Thumbs.db
 .netlify/
+.venv/
+instance/
+.env
+__pycache__/
+.pytest_cache/

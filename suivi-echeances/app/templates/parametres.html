@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titre %}Paramètres{% endblock %}
+{% block contenu %}
+<h1>Paramètres</h1>
+
+<h2>Synchronisation Pennylane</h2>
+<div class="carte">
+  <p class="discret">La synchronisation importe les dossiers du portefeuille, met à jour les échéances (TVA et liasse passent à « Fait » quand Pennylane les indique acceptées), puis importe les temps et les factures du cabinet. Elle tourne chaque nuit ; vous pouvez aussi la lancer ici.</p>
+  <form method="post" action="{{ url_for('views.lancer_synchronisation') }}" enctype="multipart/form-data" class="ligne">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    {% if api_configuree %}<button type="submit">Synchroniser maintenant</button>{% else %}<span class="discret">Connexion directe non configurée (jeton Pennylane absent).</span>{% endif %}
+    <span class="discret">ou importer un export JSON :</span> <input type="file" name="fichier" accept=".json">
+    <button type="submit" class="secondaire">Importer le fichier</button>
+  </form>
+  {% if journal %}
+  <h3 class="discret">Dernières synchronisations</h3>
+  <table class="tableau">
+    <tr><th>Début</th><th>Statut</th><th>Résultat</th></tr>
+    {% for j in journal %}<tr><td>{{ j.debut | horodatage }}</td><td><span class="pastille {{ 'fait' if j.statut == 'ok' else 'retard' }}">{{ j.statut }}</span></td><td class="discret">{{ j.message or '' }}</td></tr>{% endfor %}
+  </table>
+  {% endif %}
+</div>
+
+<form method="post">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <h2>Chiffre d'affaires</h2>
+  <div class="carte">
+    <label class="case"><input type="checkbox" name="factures_ttc" value="1" {{ 'checked' if factures_ttc }}> Les montants de factures lus dans Pennylane sont TTC (les convertir en HT en divisant par 1,2)</label>
+  </div>
+
+  <h2>Temps perdu</h2>
+  <div class="carte">
+    <p class="discret">Cochez les activités de la saisie des temps à compter comme du temps perdu (relances de pièces, corrections, reprises…).</p>
+    {% for a in activites %}
+      <label class="case" style="display:block"><input type="checkbox" name="temps_perdu" value="{{ a.code }}" {{ 'checked' if a.temps_perdu }}> {{ a.code }} — {{ a.nom }} <span class="discret">({{ a.groupe or '' }})</span></label>
+    {% else %}<p class="discret">Les activités apparaîtront après la première synchronisation des temps.</p>{% endfor %}
+  </div>
+
+  <h2>Rattachement des clients aux dossiers</h2>
+  <div class="carte defile">
+    <p class="discret">Les temps et factures de Pennylane désignent le client par son nom. Les noms identiques à un dossier sont rattachés automatiquement ; les autres se rattachent ici.</p>
+    <table class="tableau">
+      <tr><th>Client (temps / factures)</th><th>Dossier</th></tr>
+      {% for t in tiers %}
+      <tr><td>{{ t.nom }}</td><td><select name="tiers:{{ t.nom_normalise }}"><option value="">— Non rattaché —</option>
+        {% for d in dossiers %}<option value="{{ d.id }}" {{ 'selected' if t.dossier_id == d.id }}>{{ d.nom }}</option>{% endfor %}</select></td></tr>
+      {% endfor %}
+    </table>
+  </div>
+  <p><button type="submit">Enregistrer les paramètres</button></p>
+</form>
+{% endblock %}
