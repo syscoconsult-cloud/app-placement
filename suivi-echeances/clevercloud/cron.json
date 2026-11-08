@@ -1,0 +1,4 @@
+[
+  "0 1 * * * $ROOT/clevercloud/tache.sh synchroniser",
+  "45 6 * * 1-5 $ROOT/clevercloud/tache.sh alertes"
+]

@@ -2,7 +2,7 @@
 
 import os
 import tempfile
-from datetime import date
+from datetime import date, timedelta
 
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
 from werkzeug.security import generate_password_hash
@@ -11,7 +11,7 @@ from echeances import MOIS, ajouter_mois
 
 from . import rentabilite
 from .alertes import LIBELLES, URGENTS, niveau
-from .auth import admin_requis, connexion_requise
+from .auth import admin_requis, connexion_requise, controler_mot_de_passe
 from .db import get_db, parametre, set_parametre
 from .pennylane import ErreurPennylane, FichierSource, source_depuis_config
 from .sync import associer_tiers, generer_echeances, synchroniser
@@ -75,8 +75,8 @@ def accueil():
     filtre, params = ("", []) if tous else (" AND d.collaborateur_id = ?", [g.user["id"]])
     a_traiter = enrichir(conn.execute(
         REQUETE_ECHEANCES + filtre + """ AND e.statut != 'Fait'
-        AND (e.date_limite <= date(?, '+30 days') OR e.anomalie IS NOT NULL) ORDER BY e.date_limite""",
-        params + [j.isoformat()]).fetchall())
+        AND (e.date_limite <= ? OR e.anomalie IS NOT NULL) ORDER BY e.date_limite""",
+        params + [(j + timedelta(days=30)).isoformat()]).fetchall())
     mois = j.strftime("%Y-%m")
     du_mois = conn.execute(REQUETE_ECHEANCES + filtre + " AND substr(e.date_limite, 1, 7) = ?",
                            params + [mois]).fetchall()
@@ -107,7 +107,7 @@ def echeances():
                            ("categorie", "e.categorie"), ("statut", "e.statut")):
         if f[champ]:
             sql += f" AND {colonne} = ?"
-            params.append(f[champ])
+            params.append(int(f[champ]) if champ in ("dossier", "collaborateur") and f[champ].isdigit() else f[champ])
     lignes = enrichir(conn.execute(sql + " ORDER BY e.date_limite, d.nom", params).fetchall())
     if f["alerte"] == "retard":  # les anomalies sont aussi urgentes que les retards
         lignes = [l for l in lignes if l["niveau"] in URGENTS]
@@ -263,6 +263,11 @@ def collaborateurs():
             uid = conn.execute("INSERT INTO users (nom, email, role, taux_horaire, actif) VALUES (?, ?, ?, ?, ?)",
                                valeurs).lastrowid
         if request.form.get("mot_de_passe"):
+            erreur = controler_mot_de_passe(request.form["mot_de_passe"])
+            if erreur:
+                conn.rollback()
+                flash(erreur, "erreur")
+                return redirect(url_for("views.collaborateurs"))
             conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
                          (generate_password_hash(request.form["mot_de_passe"]), int(uid)))
         conn.commit()
@@ -282,7 +287,7 @@ def parametres():
         if ed()["pennylane"]:
             set_parametre(conn, "factures_ttc", "1" if request.form.get("factures_ttc") else "0")
         if request.form.get("nouvelle_activite_code"):
-            conn.execute("INSERT OR IGNORE INTO activites (code, nom, groupe) VALUES (?, ?, ?)",
+            conn.execute("INSERT INTO activites (code, nom, groupe) VALUES (?, ?, ?) ON CONFLICT (code) DO NOTHING",
                          (request.form["nouvelle_activite_code"].strip(), request.form.get("nouvelle_activite_nom"),
                           request.form.get("nouvelle_activite_groupe")))
         perdues = set(request.form.getlist("temps_perdu"))
@@ -398,9 +403,9 @@ def temps():
     tous = g.user["role"] == "admin" and request.args.get("tous") == "1"
     lignes = conn.execute(
         """SELECT tp.*, d.nom AS dossier FROM temps tp LEFT JOIN tiers ti ON ti.nom_normalise = tp.tiers
-           LEFT JOIN dossiers d ON d.id = ti.dossier_id WHERE tp.date >= date(?, '-60 days')"""
+           LEFT JOIN dossiers d ON d.id = ti.dossier_id WHERE tp.date >= ?"""
         + ("" if tous else " AND tp.user_id = ?") + " ORDER BY tp.date DESC, tp.id DESC",
-        (aujourd_hui().isoformat(),) if tous else (aujourd_hui().isoformat(), g.user["id"])).fetchall()
+        [(aujourd_hui() - timedelta(days=60)).isoformat()] + ([] if tous else [g.user["id"]])).fetchall()
     return render_template(
         "temps.html", lignes=lignes, tous=tous, activites=activites(conn),
         dossiers=conn.execute("SELECT id, nom FROM dossiers WHERE actif = 1 ORDER BY nom").fetchall(),
@@ -413,8 +418,11 @@ def temps():
 @saisie_manuelle
 def supprimer_temps(temps_id):
     conn = get_db()
-    conn.execute("DELETE FROM temps WHERE id = ? AND pennylane_id IS NULL AND (user_id = ? OR ? = 'admin')",
-                 (temps_id, g.user["id"], g.user["role"]))
+    if g.user["role"] == "admin":
+        conn.execute("DELETE FROM temps WHERE id = ? AND pennylane_id IS NULL", (temps_id,))
+    else:
+        conn.execute("DELETE FROM temps WHERE id = ? AND pennylane_id IS NULL AND user_id = ?",
+                     (temps_id, g.user["id"]))
     conn.commit()
     flash("Temps supprimé.", "ok")
     return redirect(request.referrer or url_for("views.temps"))

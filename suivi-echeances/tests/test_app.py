@@ -1,3 +1,4 @@
+import os
 import re
 from datetime import date
 from pathlib import Path
@@ -12,11 +13,24 @@ from app.sync import synchroniser
 
 EXPORT = Path(__file__).with_name("export_pennylane_exemple.json")
 AUJOURD_HUI = date(2026, 11, 8)
+# Les tests tournent sur SQLite, et aussi sur PostgreSQL si TEST_POSTGRES_URL est défini.
+POSTGRES = os.environ.get("TEST_POSTGRES_URL")
+
+
+@pytest.fixture(params=["sqlite"] + (["postgres"] if POSTGRES else []))
+def base(request, tmp_path):
+    if request.param == "sqlite":
+        return str(tmp_path / "t.sqlite3")
+    import psycopg
+    with psycopg.connect(POSTGRES, autocommit=True) as c:
+        c.execute("DROP SCHEMA public CASCADE")
+        c.execute("CREATE SCHEMA public")
+    return POSTGRES
 
 
 @pytest.fixture
-def app(tmp_path):
-    return create_app({"TESTING": True, "SECRET_KEY": "test", "EDITION": "france", "DATABASE": str(tmp_path / "t.sqlite3"),
+def app(base):
+    return create_app({"TESTING": True, "SECRET_KEY": "test", "EDITION": "france", "DATABASE": base,
                        "AUJOURD_HUI": AUJOURD_HUI, "PENNYLANE_FICHIER": str(EXPORT)})
 
 
@@ -159,9 +173,9 @@ def test_pages_admin_interdites_aux_collaborateurs(app, conn):
 # ------------------------------------------------------------ édition Bénin
 
 @pytest.fixture
-def app_benin(tmp_path):
+def app_benin(base):
     return create_app({"TESTING": True, "SECRET_KEY": "test", "EDITION": "benin",
-                       "DATABASE": str(tmp_path / "benin.sqlite3"), "AUJOURD_HUI": AUJOURD_HUI})
+                       "DATABASE": base, "AUJOURD_HUI": AUJOURD_HUI})
 
 
 def _connecter(app, email="associe@cabinet.test", role="admin"):
@@ -231,3 +245,76 @@ def test_collaborateur_ne_supprime_pas_les_temps_des_autres(app_benin):
 def test_edition_inconnue():
     with pytest.raises(RuntimeError):
         create_app({"SECRET_KEY": "x", "EDITION": "senegal"})
+
+
+# ------------------------------------------------------------ sécurité
+
+def test_blocage_apres_tentatives_repetees(app, conn):
+    from werkzeug.security import generate_password_hash
+    conn.execute("INSERT INTO users (email, nom, role, password_hash) VALUES (?, ?, 'admin', ?)",
+                 ("associe@cabinet.test", "Associée", generate_password_hash("le-bon-mot-de-passe")))
+    conn.commit()
+    client = app.test_client()
+    jeton = _csrf(client.get("/connexion"))
+    for _ in range(5):
+        r = client.post("/connexion", data={"csrf": jeton, "email": "associe@cabinet.test", "mot_de_passe": "faux"})
+        assert r.status_code == 200
+    # Même le bon mot de passe est refusé pendant 15 minutes.
+    r = client.post("/connexion", data={"csrf": jeton, "email": "associe@cabinet.test",
+                                        "mot_de_passe": "le-bon-mot-de-passe"})
+    assert r.status_code == 429 and "Trop de tentatives" in r.get_data(as_text=True)
+
+
+def test_mot_de_passe_trop_court_refuse(app_benin):
+    client, conn, jeton = _connecter(app_benin)
+    collab = conn.execute("INSERT INTO users (email, nom) VALUES ('collab@cabinet.test', 'Collab')").lastrowid
+    conn.commit()
+    for mot_de_passe, accepte in (("court", False), ("aaaaaaaaaaaaaa", False), ("Cotonou-2026-revision", True)):
+        client.post("/collaborateurs", data={"csrf": jeton, "id": collab, "nom": "Collab", "email": "collab@cabinet.test",
+                                             "role": "collaborateur", "actif": "1", "mot_de_passe": mot_de_passe})
+        hash_ = conn.execute("SELECT password_hash FROM users WHERE id = ?", (collab,)).fetchone()[0]
+        assert (hash_ is not None) == accepte, mot_de_passe
+
+
+def test_entetes_et_cookies_securises(tmp_path):
+    app = create_app({"TESTING": True, "SECRET_KEY": "x", "EDITION": "france", "DATABASE": str(tmp_path / "s.db"),
+                      "URL_APPLICATION": "https://echeances.cabinet.test"})
+    r = app.test_client().get("/connexion")
+    assert r.headers["X-Frame-Options"] == "DENY"
+    assert "default-src 'self'" in r.headers["Content-Security-Policy"]
+    assert "Strict-Transport-Security" in r.headers
+    assert "Secure" in r.headers["Set-Cookie"]
+
+
+def test_premier_administrateur_cree_par_reglage(base):
+    reglages = {"TESTING": True, "SECRET_KEY": "x", "EDITION": "benin", "DATABASE": base,
+                "ADMIN_EMAIL": "Associe@Cabinet.test", "ADMIN_MOT_DE_PASSE": "Un-mot-de-passe-solide"}
+    create_app(reglages)
+    conn = db.connect(base)
+    ligne = conn.execute("SELECT email, role FROM users").fetchone()
+    assert (ligne["email"], ligne["role"]) == ("associe@cabinet.test", "admin")
+    # Au redémarrage, un mot de passe changé depuis l'application n'est pas écrasé.
+    conn.execute("UPDATE users SET password_hash = 'change'")
+    conn.commit()
+    create_app(reglages)
+    assert conn.execute("SELECT password_hash FROM users").fetchone()[0] == "change"
+    conn.close()
+
+
+def test_mot_de_passe_administrateur_trop_faible(tmp_path):
+    with pytest.raises(RuntimeError):
+        create_app({"SECRET_KEY": "x", "DATABASE": str(tmp_path / "a.db"),
+                    "ADMIN_EMAIL": "a@cabinet.test", "ADMIN_MOT_DE_PASSE": "court"})
+
+
+def test_echec_de_synchronisation_previent_les_administrateurs(app, conn, monkeypatch):
+    conn.execute("INSERT INTO users (email, nom, role) VALUES ('associe@cabinet.test', 'Associée', 'admin')")
+    conn.commit()
+    envoyes = []
+    monkeypatch.setattr("app.alertes.envoyer", lambda config, messages: envoyes.extend(messages))
+    app.config.update(PENNYLANE_FICHIER=None, PENNYLANE_TOKEN="jeton", SMTP_HOTE="smtp.test",
+                      PENNYLANE_BASE_URL="http://127.0.0.1:9")  # adresse injoignable
+    resultat = app.test_cli_runner().invoke(args=["synchroniser"])
+    assert resultat.exit_code != 0
+    assert [m["To"] for m in envoyes] == ["associe@cabinet.test"]
+    assert "a échoué" in envoyes[0]["Subject"]

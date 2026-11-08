@@ -2,6 +2,7 @@
 
 import functools
 import secrets
+from datetime import datetime, timedelta
 
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
@@ -44,16 +45,49 @@ def admin_requis(vue):
     return enveloppe
 
 
+LONGUEUR_MINIMALE = 12
+ESSAIS_PAR_COMPTE, ESSAIS_PAR_ADRESSE, FENETRE = 5, 20, timedelta(minutes=15)
+
+
+def controler_mot_de_passe(mot_de_passe):
+    """Renvoie un message d'erreur si le mot de passe est trop faible, sinon None."""
+    if len(mot_de_passe) < LONGUEUR_MINIMALE:
+        return f"Le mot de passe doit contenir au moins {LONGUEUR_MINIMALE} caractères."
+    if len(set(mot_de_passe)) < 6:
+        return "Le mot de passe est trop simple (trop de caractères répétés)."
+    return None
+
+
+def _trop_d_essais(conn, email, ip):
+    depuis = (datetime.now() - FENETRE).isoformat()
+    par_compte = conn.execute("SELECT COUNT(*) FROM connexions_echouees WHERE email = ? AND moment > ?",
+                              (email, depuis)).fetchone()[0]
+    par_adresse = conn.execute("SELECT COUNT(*) FROM connexions_echouees WHERE ip = ? AND moment > ?",
+                               (ip, depuis)).fetchone()[0]
+    return par_compte >= ESSAIS_PAR_COMPTE or par_adresse >= ESSAIS_PAR_ADRESSE
+
+
 @bp.route("/connexion", methods=["GET", "POST"])
 def connexion():
     if request.method == "POST":
-        user = get_db().execute("SELECT * FROM users WHERE email = ? AND actif = 1",
-                                (request.form["email"].strip().lower(),)).fetchone()
+        conn = get_db()
+        email, ip = request.form["email"].strip().lower(), request.remote_addr
+        if _trop_d_essais(conn, email, ip):
+            flash("Trop de tentatives de connexion. Réessayez dans 15 minutes.", "erreur")
+            return render_template("connexion.html"), 429
+        user = conn.execute("SELECT * FROM users WHERE email = ? AND actif = 1", (email,)).fetchone()
         if user and user["password_hash"] and check_password_hash(user["password_hash"], request.form["mot_de_passe"]):
+            conn.execute("DELETE FROM connexions_echouees WHERE email = ? OR moment < ?",
+                         (email, (datetime.now() - FENETRE).isoformat()))
+            conn.commit()
             session.clear()
+            session.permanent = True
             session["user_id"] = user["id"]
             suite = request.args.get("suite", "")
             return redirect(suite if suite.startswith("/") and not suite.startswith("//") else url_for("views.accueil"))
+        conn.execute("INSERT INTO connexions_echouees (email, ip, moment) VALUES (?, ?, ?)",
+                     (email, ip, datetime.now().isoformat()))
+        conn.commit()
         flash("Adresse e-mail ou mot de passe incorrect.", "erreur")
     return render_template("connexion.html")
 

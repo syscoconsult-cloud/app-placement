@@ -1,23 +1,32 @@
-"""Base de données SQLite de l'application (un seul fichier, hébergeable en France)."""
+"""Base de données de l'application.
 
+- PostgreSQL en production (base gérée et sauvegardée par l'hébergeur),
+  quand DATABASE est une adresse « postgresql://… » ;
+- SQLite (un simple fichier) pour les essais sur poste et les tests.
+
+Le code de l'application écrit ses requêtes une seule fois, avec des « ? » ;
+la traduction pour PostgreSQL est faite ici.
+"""
+
+import re
 import sqlite3
 
 from flask import current_app, g
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
+    id {pk},
     email TEXT UNIQUE NOT NULL,
     nom TEXT NOT NULL,
     password_hash TEXT,
     role TEXT NOT NULL DEFAULT 'collaborateur',      -- 'admin' ou 'collaborateur'
-    taux_horaire REAL,                                -- coût horaire de revient (monnaie de l'édition)
+    taux_horaire {reel},                                -- coût horaire de revient (monnaie de l'édition)
     pennylane_user_id TEXT UNIQUE,
     actif INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS dossiers (
-    id INTEGER PRIMARY KEY,
+    id {pk},
     nom TEXT NOT NULL,
     pays TEXT NOT NULL DEFAULT 'France',
     forme TEXT,
@@ -34,15 +43,15 @@ CREATE TABLE IF NOT EXISTS dossiers (
     depot_comptes INTEGER NOT NULL DEFAULT 1,
     collaborateur_id INTEGER REFERENCES users(id),
     pennylane_id TEXT UNIQUE,
-    budget_heures REAL,                               -- budget annuel d'heures
-    honoraires_annuels REAL,                          -- honoraires annuels HT prévus
+    budget_heures {reel},                               -- budget annuel d'heures
+    honoraires_annuels {reel},                          -- honoraires annuels HT prévus
     actif INTEGER NOT NULL DEFAULT 1,
     suivi_depuis TEXT,                                -- pas d'échéance générée avant cette date
     notes TEXT
 );
 
 CREATE TABLE IF NOT EXISTS echeances (
-    id INTEGER PRIMARY KEY,
+    id {pk},
     dossier_id INTEGER NOT NULL REFERENCES dossiers(id) ON DELETE CASCADE,
     code TEXT NOT NULL,
     libelle TEXT NOT NULL,
@@ -68,7 +77,7 @@ CREATE TABLE IF NOT EXISTS tiers (
 );
 
 CREATE TABLE IF NOT EXISTS temps (
-    id INTEGER PRIMARY KEY,
+    id {pk},
     pennylane_id TEXT UNIQUE,
     date TEXT NOT NULL,
     user_id INTEGER REFERENCES users(id),
@@ -83,12 +92,12 @@ CREATE TABLE IF NOT EXISTS temps (
 );
 
 CREATE TABLE IF NOT EXISTS factures (
-    id INTEGER PRIMARY KEY,
+    id {pk},
     pennylane_id TEXT UNIQUE,
     date TEXT NOT NULL,
     numero TEXT,
     tiers TEXT,                                       -- nom normalisé du client
-    montant REAL NOT NULL
+    montant {reel} NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS activites (
@@ -103,8 +112,15 @@ CREATE TABLE IF NOT EXISTS parametres (
     valeur TEXT
 );
 
+CREATE TABLE IF NOT EXISTS connexions_echouees (
+    id {pk},
+    email TEXT,
+    ip TEXT,
+    moment TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS journal_sync (
-    id INTEGER PRIMARY KEY,
+    id {pk},
     debut TEXT NOT NULL,
     fin TEXT,
     statut TEXT,
@@ -117,11 +133,97 @@ CREATE INDEX IF NOT EXISTS idx_factures_date ON factures(date);
 """
 
 
-def connect(path):
-    conn = sqlite3.connect(path)
+TYPES = {
+    "sqlite": {"pk": "INTEGER PRIMARY KEY", "reel": "REAL"},
+    "postgres": {"pk": "SERIAL PRIMARY KEY", "reel": "DOUBLE PRECISION"},
+}
+# Tables dont la clé est une colonne « id » générée automatiquement.
+TABLES_AVEC_ID = {"users", "dossiers", "echeances", "temps", "factures", "journal_sync", "connexions_echouees"}
+
+
+def est_postgres(cible):
+    return str(cible).startswith(("postgres://", "postgresql://"))
+
+
+def connect(cible):
+    if est_postgres(cible):
+        return ConnexionPostgres(cible)
+    conn = sqlite3.connect(cible)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
+
+
+class Ligne(dict):
+    """Ligne de résultat lisible par nom de colonne (ligne["nom"]) ou par position (ligne[0])."""
+
+    def __getitem__(self, cle):
+        if isinstance(cle, int):
+            return list(self.values())[cle]
+        return super().__getitem__(cle)
+
+
+def _fabrique_lignes(curseur):
+    noms = [c.name for c in curseur.description] if curseur.description else []
+    return lambda valeurs: Ligne(zip(noms, valeurs))
+
+
+INSERT = re.compile(r"^\s*INSERT\s+INTO\s+(\w+)", re.IGNORECASE)
+
+
+class Curseur:
+    def __init__(self, curseur, lastrowid=None):
+        self._c, self.lastrowid = curseur, lastrowid
+
+    def fetchone(self):
+        return self._c.fetchone()
+
+    def fetchall(self):
+        return self._c.fetchall()
+
+    def __iter__(self):
+        return iter(self._c)
+
+
+class ConnexionPostgres:
+    """Connexion PostgreSQL qui se manipule comme une connexion sqlite3."""
+
+    type = "postgres"
+
+    def __init__(self, url):
+        import psycopg
+        self._c = psycopg.connect(url.replace("postgres://", "postgresql://", 1), row_factory=_fabrique_lignes)
+
+    @staticmethod
+    def _traduire(sql):
+        return sql.replace("%", "%%").replace("?", "%s")
+
+    def execute(self, sql, params=()):
+        m = INSERT.match(sql)
+        renvoie_id = bool(m) and m.group(1).lower() in TABLES_AVEC_ID and "RETURNING" not in sql.upper()
+        cur = self._c.execute(self._traduire(sql) + (" RETURNING id" if renvoie_id else ""), params)
+        if renvoie_id:
+            ligne = cur.fetchone()
+            return Curseur(cur, ligne[0] if ligne else None)
+        return Curseur(cur)
+
+    def executemany(self, sql, seq):
+        with self._c.cursor() as cur:
+            cur.executemany(self._traduire(sql), seq)
+
+    def executescript(self, script):
+        for instruction in script.split(";"):
+            if instruction.strip():
+                self._c.execute(instruction)
+
+    def commit(self):
+        self._c.commit()
+
+    def rollback(self):
+        self._c.rollback()
+
+    def close(self):
+        self._c.close()
 
 
 def get_db():
@@ -141,9 +243,12 @@ MIGRATIONS = [("dossiers", "suivi_depuis", "TEXT")]
 
 
 def init_db(conn):
-    conn.executescript(SCHEMA)
+    postgres = getattr(conn, "type", "sqlite") == "postgres"
+    conn.executescript(SCHEMA.format(**TYPES["postgres" if postgres else "sqlite"]))
     for table, colonne, type_ in MIGRATIONS:
-        if colonne not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
+        if postgres:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {colonne} {type_}")
+        elif colonne not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
             conn.execute(f"ALTER TABLE {table} ADD COLUMN {colonne} {type_}")
     conn.commit()
 

@@ -46,7 +46,7 @@ aux deux à leur prochain déploiement.
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 cp .env.example .env          # puis compléter
 set -a && . ./.env && set +a
-.venv/bin/flask --app app creer-admin          # votre compte administrateur
+.venv/bin/flask --app app creer-admin          # votre compte administrateur (12 caractères minimum)
 .venv/bin/flask --app app synchroniser         # premier import Pennylane
 .venv/bin/flask --app app run                  # http://localhost:5000
 ```
@@ -58,17 +58,21 @@ Pour essayer l'application Bénin en local : `EDITION=benin` dans `.env`, puis
 
 ### Hébergement
 
-La même image Docker (`Dockerfile`) est déployée deux fois, une par
-application, chacune avec sa variable `EDITION`, sa clé `SECRET_KEY`, son volume
-de données et son adresse (par exemple `echeances-france.votre-cabinet.fr` et
-`echeances-benin.votre-cabinet.fr`). Hébergeurs en France : Scaleway (Paris),
-OVHcloud (Roubaix, Gravelines) ou Clever Cloud. L'application Bénin peut être
-hébergée au même endroit ou ailleurs selon vos obligations de protection des
-données.
+Pour une mise en ligne **sans maintenance ni sauvegarde à gérer**, suivez
+[DEPLOIEMENT.md](DEPLOIEMENT.md) : hébergement géré Clever Cloud (Paris), base
+PostgreSQL sauvegardée automatiquement, HTTPS automatique, une application par
+pays. En local et pour les tests, l'application utilise un simple fichier SQLite.
 
-La base est le fichier indiqué par `DATABASE`, à placer sur un volume
-persistant sauvegardé (`/donnees`). Les tâches planifiées sont dans
-`crontab.exemple`. Placez chaque application derrière HTTPS.
+Tests sur PostgreSQL : `TEST_POSTGRES_URL=postgresql://… .venv/bin/python -m pytest tests`.
+
+### Sécurité
+
+- Mots de passe chiffrés, 12 caractères minimum ; blocage de 15 minutes après
+  5 échecs de connexion sur un compte (ou 20 depuis une même adresse).
+- Déconnexion après 4 heures d'inactivité ; cookies réservés au HTTPS dès que
+  `URL_APPLICATION` commence par `https://` ; en-têtes de sécurité du navigateur.
+- Formulaires protégés (jeton CSRF), rentabilité et paramètres réservés aux
+  administrateurs, accès Pennylane en lecture seule.
 
 ## Connexion à Pennylane (application France)
 

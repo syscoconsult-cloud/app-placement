@@ -76,10 +76,27 @@ def envoyer_alertes(conn, config, aujourd_hui=None, simulation=False):
         messages.append(msg)
 
     if messages and not simulation:
-        with smtplib.SMTP(config["SMTP_HOTE"], int(config.get("SMTP_PORT", 587)), timeout=30) as smtp:
-            smtp.starttls()
-            if config.get("SMTP_UTILISATEUR"):
-                smtp.login(config["SMTP_UTILISATEUR"], config["SMTP_MOT_DE_PASSE"])
-            for msg in messages:
-                smtp.send_message(msg)
+        envoyer(config, messages)
+    return messages
+
+
+def envoyer(config, messages):
+    with smtplib.SMTP(config["SMTP_HOTE"], int(config.get("SMTP_PORT", 587)), timeout=30) as smtp:
+        smtp.starttls()
+        if config.get("SMTP_UTILISATEUR"):
+            smtp.login(config["SMTP_UTILISATEUR"], config["SMTP_MOT_DE_PASSE"])
+        for msg in messages:
+            smtp.send_message(msg)
+
+
+def prevenir_administrateurs(conn, config, sujet, corps):
+    """Message de service aux administrateurs (ex. synchronisation Pennylane en échec)."""
+    messages = []
+    for admin in conn.execute("SELECT email FROM users WHERE role = 'admin' AND actif = 1"):
+        msg = EmailMessage()
+        msg["Subject"], msg["From"], msg["To"] = sujet, config.get("SMTP_EXPEDITEUR"), admin["email"]
+        msg.set_content(corps)
+        messages.append(msg)
+    if messages and config.get("SMTP_HOTE"):
+        envoyer(config, messages)
     return messages
