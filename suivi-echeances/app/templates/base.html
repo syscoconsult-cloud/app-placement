@@ -27,7 +27,7 @@
   </nav>
   <form method="post" action="{{ url_for('auth.deconnexion') }}">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-    <button type="submit">{{ g.user.nom }} · Déconnexion</button>
+    <button type="submit" title="Connecté : {{ g.user.nom }}">Déconnexion</button>
   </form>
 </div></header>
 {% endif %}

@@ -16,7 +16,7 @@ AUJOURD_HUI = date(2026, 11, 8)
 
 @pytest.fixture
 def app(tmp_path):
-    return create_app({"TESTING": True, "SECRET_KEY": "test", "DATABASE": str(tmp_path / "t.sqlite3"),
+    return create_app({"TESTING": True, "SECRET_KEY": "test", "EDITION": "france", "DATABASE": str(tmp_path / "t.sqlite3"),
                        "AUJOURD_HUI": AUJOURD_HUI, "PENNYLANE_FICHIER": str(EXPORT)})
 
 
@@ -118,7 +118,8 @@ def test_parcours_web(app, conn):
     assert client.post("/connexion", data={"email": "x", "mot_de_passe": "y"}).status_code == 400  # sans jeton
     r = client.post("/connexion", data={"csrf": jeton, "email": "associe@cabinet.test", "mot_de_passe": "secret"})
     assert r.status_code == 302
-    for page in ("/", "/echeances", "/echeances?alerte=retard", "/dossiers", "/dossiers/1", "/rentabilite",
+    for page in ("/", "/echeances", "/echeances?alerte=retard", "/dossiers", "/dossiers/1", "/dossiers/nouveau",
+                 "/rentabilite",
                  "/rentabilite?mois=2026-10&cumul=1&ca=lisse", "/collaborateurs", "/parametres"):
         assert client.get(page).status_code == 200, page
     assert "ALPHA AUTO" in client.get("/echeances?alerte=retard").get_data(as_text=True)
@@ -179,6 +180,8 @@ def test_edition_benin_dossier_temps_et_rentabilite(app_benin):
     client, conn, jeton = _connecter(app_benin)
     page = client.get("/").get_data(as_text=True)
     assert "Bénin" in page and "Pennylane" not in page
+    for url in ("/dossiers/nouveau", "/temps", "/honoraires", "/parametres", "/collaborateurs", "/rentabilite"):
+        assert client.get(url).status_code == 200, url
     assert client.post("/synchroniser", data={"csrf": jeton}).status_code == 404
 
     r = client.post("/dossiers/nouveau", data={

@@ -6,6 +6,7 @@ from datetime import date
 
 import click
 from flask import Flask
+from jinja2 import Undefined
 
 # Le moteur de calcul des échéances (echeances.py) est dans le dossier parent.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -48,12 +49,19 @@ def create_app(config=None):
     app.jinja_env.filters["monnaie"] = lambda v: "—" if v is None else f"{v:,.0f} {monnaie}".replace(",", "\u202f")
     app.jinja_env.filters["heures"] = (
         lambda v: "—" if v is None else f"{v:,.1f} h".replace(",", "\u202f").replace(".", ","))
-    app.jinja_env.filters["nombre_saisie"] = (
-        lambda v: "" if v is None else str(int(v)) if float(v).is_integer() else str(v).replace(".", ","))
+    app.jinja_env.filters["nombre_saisie"] = _nombre_saisie
     app.jinja_env.filters["horodatage"] = lambda s: f"{s[8:10]}/{s[5:7]}/{s[:4]} à {s[11:16]}" if s else ""
 
     _commandes(app)
     return app
+
+
+def _nombre_saisie(v):
+    """Valeur numérique pour un champ de formulaire : 1800000 plutôt que 1800000.0, virgule décimale."""
+    if v is None or v == "" or isinstance(v, Undefined):
+        return ""
+    v = float(v)
+    return str(int(v)) if v.is_integer() else str(v).replace(".", ",")
 
 
 def _commandes(app):
