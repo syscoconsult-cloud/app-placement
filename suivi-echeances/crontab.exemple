@@ -1,3 +1,6 @@
-# Synchronisation Pennylane chaque nuit à 2 h, alertes chaque matin à 7 h 45 (jours ouvrés).
+# Application France : synchronisation Pennylane chaque nuit à 2 h, alertes à 7 h 45 (jours ouvrés).
 0 2 * * *   cd /appli && flask --app app synchroniser >> /donnees/sync.log 2>&1
 45 7 * * 1-5 cd /appli && flask --app app alertes >> /donnees/alertes.log 2>&1
+
+# Application Bénin : pas de synchronisation, seulement les alertes (heure de Cotonou).
+# 45 7 * * 1-5 cd /appli && flask --app app alertes >> /donnees/alertes.log 2>&1

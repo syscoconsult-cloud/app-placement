@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titre %}Saisie des temps{% endblock %}
+{% block contenu %}
+<div class="entete">
+  <h1>Saisie des temps</h1>
+  {% if g.user.role == 'admin' %}
+    {% if tous %}<a class="bouton secondaire" href="?tous=0">Voir mes temps</a>{% else %}<a class="bouton secondaire" href="?tous=1">Voir les temps du cabinet</a>{% endif %}
+  {% endif %}
+</div>
+<form method="post" class="carte">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <div class="champs">
+    <label>Date <input type="date" name="date" value="{{ date_defaut }}" required></label>
+    <label>Dossier <select name="dossier_id" required><option value="">—</option>
+      {% for d in dossiers %}<option value="{{ d.id }}" {{ 'selected' if d.id == dossier_defaut }}>{{ d.nom }}</option>{% endfor %}</select></label>
+    <label>Activité <select name="activite_code" required>
+      {% for a in activites %}<option value="{{ a.code }}">{{ a.code }} — {{ a.nom }}</option>{% endfor %}</select></label>
+    <label>Durée (heures, ex. 1,5) <input name="heures" inputmode="decimal" required></label>
+    <label class="case"><input type="checkbox" name="facturable" value="1"> Facturable en plus des honoraires</label>
+    <label style="grid-column: 1 / -1">Description <input name="description" placeholder="Travail réalisé"></label>
+  </div>
+  <p><button type="submit">Enregistrer</button></p>
+</form>
+<h2>{{ 'Temps du cabinet' if tous else 'Mes temps' }} <span class="discret">(60 derniers jours)</span></h2>
+<div class="defile"><table class="tableau">
+  <tr><th>Date</th>{% if tous %}<th>Collaborateur</th>{% endif %}<th>Dossier</th><th>Activité</th><th class="nombre">Durée</th><th class="masque-mobile">Description</th><th></th></tr>
+  {% for t in lignes %}
+  <tr>
+    <td class="nombre">{{ t.date | date_fr }}</td>
+    {% if tous %}<td>{{ t.collaborateur }}</td>{% endif %}
+    <td>{{ t.dossier or '—' }}</td>
+    <td>{{ t.activite_code }} — {{ t.activite_nom }}{% if t.facturable %} <span class="pastille cat">facturable</span>{% endif %}</td>
+    <td class="nombre">{{ (t.duree_s / 3600) | heures }}</td>
+    <td class="masque-mobile discret">{{ t.description or '' }}</td>
+    <td><form method="post" action="{{ url_for('views.supprimer_temps', temps_id=t.id) }}">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button type="submit" class="secondaire">Supprimer</button></form></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="discret">Aucun temps saisi sur la période.</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

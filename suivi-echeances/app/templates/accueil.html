@@ -14,10 +14,10 @@
   <div class="carte kpi orange"><div class="valeur">{{ compteurs.proche }}</div><div class="titre">À traiter sous 7 jours</div></div>
   <div class="carte kpi vert"><div class="valeur">{{ compteurs.mois_faits }} / {{ compteurs.mois_total }}</div><div class="titre">Échéances faites en {{ libelle_mois(mois) | lower }}</div></div>
 </div>
-<p class="discret">
+{% if ed.pennylane %}<p class="discret">
   {% if derniere_sync %}Dernière synchronisation Pennylane : {{ derniere_sync.debut | horodatage }} ({{ derniere_sync.statut }}).
   {% else %}Pas encore de synchronisation avec Pennylane.{% endif %}
-</p>
+</p>{% endif %}
 <h2>À traiter dans les 30 prochains jours</h2>
 {{ tableau_echeances(echeances) }}
 {% endblock %}

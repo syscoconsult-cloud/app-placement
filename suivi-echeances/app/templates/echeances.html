@@ -19,8 +19,6 @@
     {% for c in collaborateurs %}<option value="{{ c.id }}" {{ 'selected' if filtres.collaborateur == c.id|string }}>{{ c.nom }}</option>{% endfor %}</select></label>
   <label>Catégorie <select name="categorie"><option value="">Toutes</option>
     {% for c in categories %}<option {{ 'selected' if filtres.categorie == c }}>{{ c }}</option>{% endfor %}</select></label>
-  <label>Pays <select name="pays"><option value="">Tous</option>
-    {% for p in ['France', 'Bénin'] %}<option {{ 'selected' if filtres.pays == p }}>{{ p }}</option>{% endfor %}</select></label>
   <label>Statut <select name="statut"><option value="">Tous</option>
     {% for s in statuts %}<option {{ 'selected' if filtres.statut == s }}>{{ s }}</option>{% endfor %}</select></label>
   <label>Alerte <select name="alerte"><option value="">Toutes</option>

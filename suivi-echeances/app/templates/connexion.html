@@ -2,7 +2,7 @@
 {% block titre %}Connexion{% endblock %}
 {% block contenu %}
 <div class="carte connexion">
-  <h1>⏰ Suivi des échéances</h1>
+  <h1>{{ ed.drapeau }} {{ ed.nom }}</h1>
   <form method="post" class="champs" style="grid-template-columns: 1fr">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <label>Adresse e-mail <input type="email" name="email" required autofocus></label>

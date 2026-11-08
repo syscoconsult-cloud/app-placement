@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titre %}Honoraires{% endblock %}
+{% block contenu %}
+<h1>Honoraires facturés</h1>
+<p class="discret">Saisissez les factures d'honoraires émises (montant HT en {{ ed.monnaie }}). Un avoir se saisit en montant négatif. Elles alimentent le chiffre d'affaires de la page Rentabilité.</p>
+<form method="post" class="carte">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <div class="champs">
+    <label>Date de facture <input type="date" name="date" value="{{ date_defaut }}" required></label>
+    <label>Dossier <select name="dossier_id" required><option value="">—</option>
+      {% for d in dossiers %}<option value="{{ d.id }}">{{ d.nom }}</option>{% endfor %}</select></label>
+    <label>Numéro <input name="numero" placeholder="ex. F-2026-001"></label>
+    <label>Montant HT ({{ ed.monnaie }}) <input name="montant" inputmode="decimal" required></label>
+  </div>
+  <p><button type="submit">Enregistrer</button></p>
+</form>
+<h2>Dernières factures</h2>
+<div class="defile"><table class="tableau">
+  <tr><th>Date</th><th>Dossier</th><th>Numéro</th><th class="nombre">Montant HT</th><th></th></tr>
+  {% for f in lignes %}
+  <tr><td class="nombre">{{ f.date | date_fr }}</td><td>{{ f.dossier or '—' }}</td><td>{{ f.numero or '' }}</td>
+      <td class="nombre {{ 'negatif' if f.montant < 0 }}">{{ f.montant | monnaie }}</td>
+      <td><form method="post" action="{{ url_for('views.supprimer_facture', facture_id=f.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button type="submit" class="secondaire">Supprimer</button></form></td></tr>
+  {% else %}
+  <tr><td colspan="5" class="discret">Aucune facture saisie.</td></tr>
+  {% endfor %}
+</table></div>
+{% endblock %}

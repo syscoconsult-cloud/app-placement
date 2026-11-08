@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from . import db  # noqa: E402
 
 CONFIG_ENV = [
-    "SECRET_KEY", "DATABASE", "PENNYLANE_TOKEN", "PENNYLANE_BASE_URL", "PENNYLANE_FIRM_ID",
+    "EDITION", "SECRET_KEY", "DATABASE", "PENNYLANE_TOKEN", "PENNYLANE_BASE_URL", "PENNYLANE_FIRM_ID",
     "PENNYLANE_OWN_COMPANY_ID", "PENNYLANE_ENDPOINTS", "PENNYLANE_FICHIER", "SMTP_HOTE", "SMTP_PORT",
     "SMTP_UTILISATEUR", "SMTP_MOT_DE_PASSE", "SMTP_EXPEDITEUR", "URL_APPLICATION",
 ]
@@ -25,6 +25,8 @@ def create_app(config=None):
                       SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
     app.config.update({k: os.environ[k] for k in CONFIG_ENV if os.environ.get(k)})
     app.config.update(config or {})
+    from .editions import edition
+    app.config["ED"] = edition(app.config.get("EDITION"))
     if not app.config.get("SECRET_KEY"):
         raise RuntimeError("Définissez SECRET_KEY (chaîne aléatoire longue) avant de lancer l'application.")
     os.makedirs(app.instance_path, exist_ok=True)
@@ -40,10 +42,14 @@ def create_app(config=None):
     app.register_blueprint(auth.bp)
     app.register_blueprint(views.bp)
     app.jinja_env.globals["csrf_token"] = auth.csrf_token
+    app.jinja_env.globals["ed"] = app.config["ED"]
     app.jinja_env.filters["date_fr"] = lambda s: date.fromisoformat(s[:10]).strftime("%d/%m/%Y") if s else ""
-    app.jinja_env.filters["euros"] = lambda v: "—" if v is None else f"{v:,.0f} €".replace(",", "\u202f")
+    monnaie = app.config["ED"]["monnaie"]
+    app.jinja_env.filters["monnaie"] = lambda v: "—" if v is None else f"{v:,.0f} {monnaie}".replace(",", "\u202f")
     app.jinja_env.filters["heures"] = (
         lambda v: "—" if v is None else f"{v:,.1f} h".replace(",", "\u202f").replace(".", ","))
+    app.jinja_env.filters["nombre_saisie"] = (
+        lambda v: "" if v is None else str(int(v)) if float(v).is_integer() else str(v).replace(".", ","))
     app.jinja_env.filters["horodatage"] = lambda s: f"{s[8:10]}/{s[5:7]}/{s[:4]} à {s[11:16]}" if s else ""
 
     _commandes(app)
@@ -59,6 +65,8 @@ def _commandes(app):
     @app.cli.command("synchroniser")
     def cmd_synchroniser():
         """Synchronise les dossiers, déclarations, temps et factures avec Pennylane."""
+        if not app.config["ED"]["pennylane"]:
+            raise click.ClickException("Cette édition n'est pas connectée à Pennylane.")
         conn = db.connect(app.config["DATABASE"])
         resume = synchroniser(conn, source_depuis_config(app.config))
         click.echo(f"Synchronisation terminée : {resume}")

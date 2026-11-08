@@ -3,19 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titre %}Suivi des échéances{% endblock %} — Cabinet</title>
+  <title>{% block titre %}Suivi des échéances{% endblock %} — {{ ed.pays }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 {% if g.user %}
 <header><div class="barre">
-  <div class="logo">⏰ Suivi des échéances</div>
+  <div class="logo">{{ ed.drapeau }} {{ ed.nom_court }}</div>
   {% set page = request.endpoint %}
   <nav>
     <a href="{{ url_for('views.accueil') }}" class="{{ 'actif' if page == 'views.accueil' }}">Tableau de bord</a>
     <a href="{{ url_for('views.echeances') }}" class="{{ 'actif' if page == 'views.echeances' }}">Échéances</a>
     <a href="{{ url_for('views.dossiers') }}" class="{{ 'actif' if page in ('views.dossiers', 'views.dossier', 'views.nouveau_dossier') }}">Dossiers</a>
+    {% if ed.saisie_manuelle %}
+    <a href="{{ url_for('views.temps') }}" class="{{ 'actif' if page == 'views.temps' }}">Saisie des temps</a>
+    {% endif %}
     {% if g.user.role == 'admin' %}
+    {% if ed.saisie_manuelle %}<a href="{{ url_for('views.factures') }}" class="{{ 'actif' if page == 'views.factures' }}">Honoraires</a>{% endif %}
     <a href="{{ url_for('views.page_rentabilite') }}" class="{{ 'actif' if page == 'views.page_rentabilite' }}">Rentabilité</a>
     <a href="{{ url_for('views.collaborateurs') }}" class="{{ 'actif' if page == 'views.collaborateurs' }}">Collaborateurs</a>
     <a href="{{ url_for('views.parametres') }}" class="{{ 'actif' if page == 'views.parametres' }}">Paramètres</a>

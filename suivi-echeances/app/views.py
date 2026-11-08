@@ -4,7 +4,7 @@ import os
 import tempfile
 from datetime import date
 
-from flask import Blueprint, current_app, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
 from werkzeug.security import generate_password_hash
 
 from echeances import MOIS, ajouter_mois
@@ -14,19 +14,28 @@ from .alertes import LIBELLES, URGENTS, niveau
 from .auth import admin_requis, connexion_requise
 from .db import get_db, parametre, set_parametre
 from .pennylane import ErreurPennylane, FichierSource, source_depuis_config
-from .sync import generer_echeances, synchroniser
+from .sync import associer_tiers, generer_echeances, synchroniser
 
 bp = Blueprint("views", __name__)
 
 STATUTS = ["À faire", "En cours", "Fait"]
 CATEGORIES = ["Comptable", "Fiscale", "Sociale", "Juridique"]
-FORMES = ["SAS", "SASU", "SARL", "EURL", "SCI", "EI", "SA", "SNC", "Association", "SUARL"]
-REGIMES_IMPOSITION = ["IS", "IR - BIC", "IR - BNC", "IR - revenus fonciers"]
-REGIMES_TVA = ["Mensuel (CA3)", "Trimestriel (CA3)", "Simplifié (CA12)", "Franchise en base",
-               "Mensuel (Bénin)", "Non assujetti"]
-CHAMPS_DOSSIER = ["nom", "pays", "forme", "siren", "cloture", "regime_imposition", "regime_tva", "jour_tva",
+CHAMPS_DOSSIER = ["nom", "forme", "siren", "cloture", "regime_imposition", "regime_tva", "jour_tva",
                   "effectif", "collaborateur_id", "budget_heures", "honoraires_annuels", "notes"]
 CASES_DOSSIER = ["salaries", "cfe", "acompte_cfe", "cvae", "depot_comptes", "actif"]
+
+
+# Activités proposées à la saisie des temps quand aucune n'est encore définie.
+ACTIVITES_DEFAUT = [
+    ("1.1", "Saisie et tenue comptable", "Comptabilité"), ("1.2", "Révision et états financiers", "Comptabilité"),
+    ("2.1", "Déclarations fiscales", "Fiscal"), ("3.1", "Paie et déclarations sociales", "Social"),
+    ("4.1", "Juridique (AG, RCCM)", "Juridique"), ("5.1", "Conseil", "Conseil"),
+    ("9.1", "Relances et attente de pièces", "Non productif"), ("9.2", "Corrections et reprises", "Non productif"),
+]
+
+
+def ed():
+    return current_app.config["ED"]
 
 
 def aujourd_hui():
@@ -89,13 +98,13 @@ def accueil():
 def echeances():
     conn = get_db()
     mois = request.args.get("mois") or aujourd_hui().strftime("%Y-%m")
-    f = {k: request.args.get(k, "") for k in ("dossier", "collaborateur", "categorie", "statut", "pays", "alerte")}
+    f = {k: request.args.get(k, "") for k in ("dossier", "collaborateur", "categorie", "statut", "alerte")}
     sql, params = REQUETE_ECHEANCES, []
     if f["alerte"] != "retard":  # la vue « en retard » couvre tous les mois
         sql += " AND substr(e.date_limite, 1, 7) = ?"
         params.append(mois)
     for champ, colonne in (("dossier", "e.dossier_id"), ("collaborateur", "d.collaborateur_id"),
-                           ("categorie", "e.categorie"), ("statut", "e.statut"), ("pays", "e.pays")):
+                           ("categorie", "e.categorie"), ("statut", "e.statut")):
         if f[champ]:
             sql += f" AND {colonne} = ?"
             params.append(f[champ])
@@ -160,8 +169,8 @@ def _formulaire_dossier():
 
 
 def _options_dossier():
-    return {"formes": FORMES, "regimes_imposition": REGIMES_IMPOSITION, "regimes_tva": REGIMES_TVA,
-            "collaborateurs": collaborateurs_actifs()}
+    return {"formes": ed()["formes"], "regimes_imposition": ed()["regimes_imposition"],
+            "regimes_tva": ed()["regimes_tva"], "collaborateurs": collaborateurs_actifs()}
 
 
 @bp.route("/dossiers/nouveau", methods=["GET", "POST"])
@@ -174,7 +183,8 @@ def nouveau_dossier():
         except ValueError as exc:
             flash(str(exc), "erreur")
             return render_template("dossier.html", dossier=request.form, echeances=[], **_options_dossier())
-        colonnes = CHAMPS_DOSSIER + CASES_DOSSIER
+        colonnes = CHAMPS_DOSSIER + CASES_DOSSIER + ["pays", "suivi_depuis"]
+        v["pays"], v["suivi_depuis"] = ed()["pays"], aujourd_hui().isoformat()
         dossier_id = conn.execute(f"INSERT INTO dossiers ({', '.join(colonnes)}) VALUES ({', '.join('?' * len(colonnes))})",
                                   [v[c] for c in colonnes]).lastrowid
         generer_echeances(conn, conn.execute("SELECT * FROM dossiers WHERE id = ?", (dossier_id,)).fetchone(),
@@ -182,7 +192,8 @@ def nouveau_dossier():
         conn.commit()
         flash("Dossier créé et échéances générées.", "ok")
         return redirect(url_for("views.dossier", dossier_id=dossier_id))
-    vide = {"pays": "France", "cfe": 1, "depot_comptes": 1, "actif": 1, "collaborateur_id": g.user["id"]}
+    vide = {"cfe": 1, "depot_comptes": 1, "actif": 1, "collaborateur_id": g.user["id"],
+            "regime_imposition": "IS", "jour_tva": ed()["jour_tva_defaut"]}
     return render_template("dossier.html", dossier=vide, echeances=[], **_options_dossier())
 
 
@@ -268,7 +279,12 @@ def collaborateurs():
 def parametres():
     conn = get_db()
     if request.method == "POST":
-        set_parametre(conn, "factures_ttc", "1" if request.form.get("factures_ttc") else "0")
+        if ed()["pennylane"]:
+            set_parametre(conn, "factures_ttc", "1" if request.form.get("factures_ttc") else "0")
+        if request.form.get("nouvelle_activite_code"):
+            conn.execute("INSERT OR IGNORE INTO activites (code, nom, groupe) VALUES (?, ?, ?)",
+                         (request.form["nouvelle_activite_code"].strip(), request.form.get("nouvelle_activite_nom"),
+                          request.form.get("nouvelle_activite_groupe")))
         perdues = set(request.form.getlist("temps_perdu"))
         for a in conn.execute("SELECT code FROM activites").fetchall():
             conn.execute("UPDATE activites SET temps_perdu = ? WHERE code = ?", (int(a["code"] in perdues), a["code"]))
@@ -282,7 +298,7 @@ def parametres():
     return render_template(
         "parametres.html",
         factures_ttc=parametre(conn, "factures_ttc", "0") == "1",
-        activites=conn.execute("SELECT * FROM activites ORDER BY code").fetchall(),
+        activites=activites(conn),
         tiers=conn.execute("SELECT * FROM tiers ORDER BY dossier_id IS NOT NULL, nom").fetchall(),
         dossiers=conn.execute("SELECT id, nom FROM dossiers ORDER BY nom").fetchall(),
         journal=conn.execute("SELECT * FROM journal_sync ORDER BY id DESC LIMIT 10").fetchall(),
@@ -292,6 +308,8 @@ def parametres():
 @bp.route("/synchroniser", methods=["POST"])
 @admin_requis
 def lancer_synchronisation():
+    if not ed()["pennylane"]:
+        abort(404)
     conn = get_db()
     fichier = request.files.get("fichier")
     chemin = None
@@ -312,3 +330,128 @@ def lancer_synchronisation():
         if chemin:
             os.remove(chemin)
     return redirect(url_for("views.parametres"))
+
+
+# ------------------------------------------------------------ saisie manuelle (édition sans Pennylane)
+
+def activites(conn):
+    if ed()["saisie_manuelle"] and not conn.execute("SELECT 1 FROM activites LIMIT 1").fetchone():
+        conn.executemany("INSERT INTO activites (code, nom, groupe) VALUES (?, ?, ?)", ACTIVITES_DEFAUT)
+        conn.commit()
+    return conn.execute("SELECT * FROM activites ORDER BY code").fetchall()
+
+
+def saisie_manuelle(vue):
+    """Réserve un écran à l'édition sans Pennylane (temps et honoraires saisis ici)."""
+    def enveloppe(*args, **kwargs):
+        if not ed()["saisie_manuelle"]:
+            abort(404)
+        return vue(*args, **kwargs)
+    enveloppe.__name__ = vue.__name__
+    return enveloppe
+
+
+def _dossier_actif(conn, dossier_id):
+    d = conn.execute("SELECT * FROM dossiers WHERE id = ? AND actif = 1", (dossier_id,)).fetchone()
+    if d is None:
+        raise ValueError("Dossier inconnu.")
+    return d
+
+
+def _nombre(texte, libelle):
+    try:
+        valeur = float((texte or "").replace(",", ".").replace(" ", "").replace("\u202f", ""))
+    except ValueError:
+        raise ValueError(f"{libelle} invalide.") from None
+    if valeur == 0:
+        raise ValueError(f"{libelle} obligatoire.")
+    return valeur
+
+
+@bp.route("/temps", methods=["GET", "POST"])
+@connexion_requise
+@saisie_manuelle
+def temps():
+    conn = get_db()
+    if request.method == "POST":
+        try:
+            d = _dossier_actif(conn, int(request.form["dossier_id"]))
+            heures = _nombre(request.form.get("heures"), "Durée")
+            if heures < 0 or heures > 24:
+                raise ValueError("La durée doit être comprise entre 0 et 24 heures.")
+            a = conn.execute("SELECT * FROM activites WHERE code = ?", (request.form.get("activite_code"),)).fetchone()
+            if a is None:
+                raise ValueError("Activité inconnue.")
+            jour = date.fromisoformat(request.form["date"]).isoformat()
+        except (ValueError, KeyError) as exc:
+            flash(str(exc) or "Saisie incomplète.", "erreur")
+            return redirect(url_for("views.temps"))
+        conn.execute(
+            """INSERT INTO temps (date, user_id, collaborateur, tiers, activite_code, activite_nom, mission,
+               facturable, duree_s, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (jour, g.user["id"], g.user["nom"], associer_tiers(conn, d["nom"], d["id"]), a["code"], a["nom"],
+             a["groupe"], int(bool(request.form.get("facturable"))), round(heures * 3600),
+             request.form.get("description") or None))
+        conn.commit()
+        flash("Temps enregistré.", "ok")
+        return redirect(url_for("views.temps", date=jour, dossier=d["id"]))
+    tous = g.user["role"] == "admin" and request.args.get("tous") == "1"
+    lignes = conn.execute(
+        """SELECT tp.*, d.nom AS dossier FROM temps tp LEFT JOIN tiers ti ON ti.nom_normalise = tp.tiers
+           LEFT JOIN dossiers d ON d.id = ti.dossier_id WHERE tp.date >= date(?, '-60 days')"""
+        + ("" if tous else " AND tp.user_id = ?") + " ORDER BY tp.date DESC, tp.id DESC",
+        (aujourd_hui().isoformat(),) if tous else (aujourd_hui().isoformat(), g.user["id"])).fetchall()
+    return render_template(
+        "temps.html", lignes=lignes, tous=tous, activites=activites(conn),
+        dossiers=conn.execute("SELECT id, nom FROM dossiers WHERE actif = 1 ORDER BY nom").fetchall(),
+        date_defaut=request.args.get("date") or aujourd_hui().isoformat(),
+        dossier_defaut=request.args.get("dossier", type=int))
+
+
+@bp.route("/temps/<int:temps_id>/supprimer", methods=["POST"])
+@connexion_requise
+@saisie_manuelle
+def supprimer_temps(temps_id):
+    conn = get_db()
+    conn.execute("DELETE FROM temps WHERE id = ? AND pennylane_id IS NULL AND (user_id = ? OR ? = 'admin')",
+                 (temps_id, g.user["id"], g.user["role"]))
+    conn.commit()
+    flash("Temps supprimé.", "ok")
+    return redirect(request.referrer or url_for("views.temps"))
+
+
+@bp.route("/honoraires", methods=["GET", "POST"])
+@admin_requis
+@saisie_manuelle
+def factures():
+    conn = get_db()
+    if request.method == "POST":
+        try:
+            d = _dossier_actif(conn, int(request.form["dossier_id"]))
+            montant = _nombre(request.form.get("montant"), "Montant")
+            jour = date.fromisoformat(request.form["date"]).isoformat()
+        except (ValueError, KeyError) as exc:
+            flash(str(exc) or "Saisie incomplète.", "erreur")
+            return redirect(url_for("views.factures"))
+        conn.execute("INSERT INTO factures (date, numero, tiers, montant) VALUES (?, ?, ?, ?)",
+                     (jour, request.form.get("numero") or None, associer_tiers(conn, d["nom"], d["id"]), montant))
+        conn.commit()
+        flash("Facture enregistrée.", "ok")
+        return redirect(url_for("views.factures"))
+    lignes = conn.execute(
+        """SELECT f.*, d.nom AS dossier FROM factures f LEFT JOIN tiers ti ON ti.nom_normalise = f.tiers
+           LEFT JOIN dossiers d ON d.id = ti.dossier_id ORDER BY f.date DESC, f.id DESC LIMIT 200""").fetchall()
+    return render_template(
+        "factures.html", lignes=lignes, date_defaut=aujourd_hui().isoformat(),
+        dossiers=conn.execute("SELECT id, nom FROM dossiers WHERE actif = 1 ORDER BY nom").fetchall())
+
+
+@bp.route("/honoraires/<int:facture_id>/supprimer", methods=["POST"])
+@admin_requis
+@saisie_manuelle
+def supprimer_facture(facture_id):
+    conn = get_db()
+    conn.execute("DELETE FROM factures WHERE id = ? AND pennylane_id IS NULL", (facture_id,))
+    conn.commit()
+    flash("Facture supprimée.", "ok")
+    return redirect(url_for("views.factures"))

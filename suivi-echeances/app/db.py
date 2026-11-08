@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     nom TEXT NOT NULL,
     password_hash TEXT,
     role TEXT NOT NULL DEFAULT 'collaborateur',      -- 'admin' ou 'collaborateur'
-    taux_horaire REAL,                                -- coût horaire de revient (€)
+    taux_horaire REAL,                                -- coût horaire de revient (monnaie de l'édition)
     pennylane_user_id TEXT UNIQUE,
     actif INTEGER NOT NULL DEFAULT 1
 );
@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS dossiers (
     budget_heures REAL,                               -- budget annuel d'heures
     honoraires_annuels REAL,                          -- honoraires annuels HT prévus
     actif INTEGER NOT NULL DEFAULT 1,
+    suivi_depuis TEXT,                                -- pas d'échéance générée avant cette date
     notes TEXT
 );
 
@@ -135,8 +136,15 @@ def close_db(_exc=None):
         db.close()
 
 
+# Colonnes ajoutées après la première version : ajoutées aux bases existantes.
+MIGRATIONS = [("dossiers", "suivi_depuis", "TEXT")]
+
+
 def init_db(conn):
     conn.executescript(SCHEMA)
+    for table, colonne, type_ in MIGRATIONS:
+        if colonne not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {colonne} {type_}")
     conn.commit()
 
 

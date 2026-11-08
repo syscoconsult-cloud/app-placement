@@ -3,6 +3,7 @@
 {% block contenu %}
 <h1>Paramètres</h1>
 
+{% if ed.pennylane %}
 <h2>Synchronisation Pennylane</h2>
 <div class="carte">
   <p class="discret">La synchronisation importe les dossiers du portefeuille, met à jour les échéances (TVA et liasse passent à « Fait » quand Pennylane les indique acceptées), puis importe les temps et les factures du cabinet. Elle tourne chaque nuit ; vous pouvez aussi la lancer ici.</p>
@@ -20,22 +21,34 @@
   </table>
   {% endif %}
 </div>
+{% endif %}
 
 <form method="post">
   <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if ed.pennylane %}
   <h2>Chiffre d'affaires</h2>
   <div class="carte">
     <label class="case"><input type="checkbox" name="factures_ttc" value="1" {{ 'checked' if factures_ttc }}> Les montants de factures lus dans Pennylane sont TTC (les convertir en HT en divisant par 1,2)</label>
   </div>
+  {% endif %}
 
-  <h2>Temps perdu</h2>
+  <h2>Activités et temps perdu</h2>
   <div class="carte">
     <p class="discret">Cochez les activités de la saisie des temps à compter comme du temps perdu (relances de pièces, corrections, reprises…).</p>
     {% for a in activites %}
       <label class="case" style="display:block"><input type="checkbox" name="temps_perdu" value="{{ a.code }}" {{ 'checked' if a.temps_perdu }}> {{ a.code }} — {{ a.nom }} <span class="discret">({{ a.groupe or '' }})</span></label>
     {% else %}<p class="discret">Les activités apparaîtront après la première synchronisation des temps.</p>{% endfor %}
+    {% if ed.saisie_manuelle %}
+    <p class="discret" style="margin-top:12px">Ajouter une activité à la saisie des temps :</p>
+    <div class="ligne">
+      <input name="nouvelle_activite_code" placeholder="Code (ex. 2.2)" size="8">
+      <input name="nouvelle_activite_nom" placeholder="Libellé">
+      <input name="nouvelle_activite_groupe" placeholder="Groupe (ex. Fiscal)">
+    </div>
+    {% endif %}
   </div>
 
+  {% if ed.pennylane %}
   <h2>Rattachement des clients aux dossiers</h2>
   <div class="carte defile">
     <p class="discret">Les temps et factures de Pennylane désignent le client par son nom. Les noms identiques à un dossier sont rattachés automatiquement ; les autres se rattachent ici.</p>
@@ -47,6 +60,7 @@
       {% endfor %}
     </table>
   </div>
+  {% endif %}
   <p><button type="submit">Enregistrer les paramètres</button></p>
 </form>
 {% endblock %}

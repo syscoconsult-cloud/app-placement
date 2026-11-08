@@ -40,7 +40,7 @@ def associer_tiers(conn, nom, dossier_id=None):
 
 # ------------------------------------------------------------ dossiers
 
-def importer_dossiers(conn, source):
+def importer_dossiers(conn, source, aujourd_hui):
     """Crée ou met à jour les dossiers à partir du portefeuille Pennylane.
 
     Les champs connus de Pennylane (nom, forme, clôture, TVA, collaborateur)
@@ -62,10 +62,11 @@ def importer_dossiers(conn, source):
             societe = d["forme"] not in (None, "EI")
             dossier_id = conn.execute(
                 """INSERT INTO dossiers (nom, pays, forme, siren, cloture, regime_imposition, regime_tva,
-                   salaries, depot_comptes, collaborateur_id, pennylane_id)
-                   VALUES (?, 'France', ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   salaries, depot_comptes, collaborateur_id, pennylane_id, suivi_depuis)
+                   VALUES (?, 'France', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (d["nom"], d["forme"], d["siren"], d["cloture"], "IS" if societe else "IR - BIC",
-                 d["regime_tva"], int(d["salaries"]), int(societe), collab, d["pennylane_id"])).lastrowid
+                 d["regime_tva"], int(d["salaries"]), int(societe), collab, d["pennylane_id"],
+                 aujourd_hui.isoformat())).lastrowid
         for nom in [d["nom"], *d["noms_alternatifs"]]:
             associer_tiers(conn, nom, dossier_id)
         nb += 1
@@ -93,6 +94,8 @@ def generer_echeances(conn, dossier, aujourd_hui, mois_avant=1, mois_apres=12):
     if not dossier["cloture"]:
         return 0
     du = ajouter_mois(aujourd_hui.replace(day=1), -mois_avant)
+    if dossier["suivi_depuis"]:  # pas d'échéance antérieure à l'entrée du dossier dans l'outil
+        du = max(du, date.fromisoformat(dossier["suivi_depuis"]))
     au = ajouter_mois(aujourd_hui, mois_apres)
     lignes = generer(profil(dossier), du, au)
     gardees = set()
@@ -223,7 +226,7 @@ def synchroniser(conn, source, aujourd_hui=None):
     journal = conn.execute("INSERT INTO journal_sync (debut, statut) VALUES (?, 'en cours')", (debut,)).lastrowid
     conn.commit()
     try:
-        resume = {"dossiers": importer_dossiers(conn, source), "echeances": 0, "declarations": 0}
+        resume = {"dossiers": importer_dossiers(conn, source, aujourd_hui), "echeances": 0, "declarations": 0}
         for d in conn.execute("SELECT * FROM dossiers WHERE actif = 1").fetchall():
             if d["pennylane_id"]:
                 generes, maj = synchroniser_dossier(conn, source, d, aujourd_hui)

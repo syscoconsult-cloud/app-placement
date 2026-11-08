@@ -129,14 +129,17 @@ def test_parcours_web(app, conn):
     fait = conn.execute("SELECT * FROM echeances WHERE id = ?", (e["id"],)).fetchone()
     assert fait["statut"] == "Fait" and fait["date_realisation"] == AUJOURD_HUI.isoformat()
 
+    # Même si le formulaire est trafiqué, l'édition France ne crée que des dossiers français.
     r = client.post("/dossiers/nouveau", data={
-        "csrf": jeton, "nom": "Cotonou Services", "pays": "Bénin", "forme": "SARL", "cloture": "2026-12-31",
-        "regime_imposition": "IS", "regime_tva": "Mensuel (Bénin)", "jour_tva": "10", "salaries": "1",
-        "effectif": "5", "depot_comptes": "1", "actif": "1"})
+        "csrf": jeton, "nom": "Gamma SARL", "pays": "Bénin", "forme": "SARL", "cloture": "2026-12-31",
+        "regime_imposition": "IS", "regime_tva": "Trimestriel (CA3)", "jour_tva": "19", "depot_comptes": "1",
+        "actif": "1"})
     assert r.status_code == 302
-    codes = {row[0] for row in conn.execute(
-        "SELECT e.code FROM echeances e JOIN dossiers d ON d.id = e.dossier_id WHERE d.nom = 'Cotonou Services'")}
-    assert {"BJ-TVA", "BJ-ITS", "BJ-CNSS", "BJ-IS-AC"} <= codes
+    gamma = conn.execute("SELECT * FROM dossiers WHERE nom = 'Gamma SARL'").fetchone()
+    assert gamma["pays"] == "France"
+    codes = {row[0] for row in conn.execute("SELECT code FROM echeances WHERE dossier_id = ?", (gamma["id"],))}
+    assert "FR-TVA-T" in codes and not any(c.startswith("BJ-") for c in codes)
+    assert client.get("/temps").status_code == 404  # pas de saisie manuelle en édition France
 
 
 def test_pages_admin_interdites_aux_collaborateurs(app, conn):
@@ -150,3 +153,78 @@ def test_pages_admin_interdites_aux_collaborateurs(app, conn):
     assert client.get("/").status_code == 200
     assert client.get("/rentabilite").status_code == 403
     assert client.get("/collaborateurs").status_code == 403
+
+
+# ------------------------------------------------------------ édition Bénin
+
+@pytest.fixture
+def app_benin(tmp_path):
+    return create_app({"TESTING": True, "SECRET_KEY": "test", "EDITION": "benin",
+                       "DATABASE": str(tmp_path / "benin.sqlite3"), "AUJOURD_HUI": AUJOURD_HUI})
+
+
+def _connecter(app, email="associe@cabinet.test", role="admin"):
+    from werkzeug.security import generate_password_hash
+    conn = db.connect(app.config["DATABASE"])
+    conn.execute("INSERT INTO users (email, nom, role, password_hash, taux_horaire) VALUES (?, ?, ?, ?, 5000)",
+                 (email, "Associée", role, generate_password_hash("secret")))
+    conn.commit()
+    client = app.test_client()
+    jeton = _csrf(client.get("/connexion"))
+    client.post("/connexion", data={"csrf": jeton, "email": email, "mot_de_passe": "secret"})
+    return client, conn, _csrf(client.get("/"))  # le jeton est renouvelé à la connexion
+
+
+def test_edition_benin_dossier_temps_et_rentabilite(app_benin):
+    client, conn, jeton = _connecter(app_benin)
+    page = client.get("/").get_data(as_text=True)
+    assert "Bénin" in page and "Pennylane" not in page
+    assert client.post("/synchroniser", data={"csrf": jeton}).status_code == 404
+
+    r = client.post("/dossiers/nouveau", data={
+        "csrf": jeton, "nom": "Cotonou Services", "forme": "SARL", "cloture": "2026-12-31",
+        "regime_imposition": "IS", "regime_tva": "Mensuel (Bénin)", "jour_tva": "10", "salaries": "1",
+        "effectif": "5", "depot_comptes": "1", "actif": "1"})
+    assert r.status_code == 302
+    dossier = conn.execute("SELECT * FROM dossiers WHERE nom = 'Cotonou Services'").fetchone()
+    assert dossier["pays"] == "Bénin"
+    codes = {row[0] for row in conn.execute("SELECT code FROM echeances WHERE dossier_id = ?", (dossier["id"],))}
+    assert {"BJ-TVA", "BJ-ITS", "BJ-CNSS", "BJ-IS-AC"} <= codes and not any(c.startswith("FR-") for c in codes)
+    # Un dossier qui entre dans l'outil n'hérite pas d'échéances déjà passées.
+    premiere = conn.execute("SELECT MIN(date_limite) FROM echeances WHERE dossier_id = ?", (dossier["id"],)).fetchone()[0]
+    assert premiere >= AUJOURD_HUI.isoformat()
+
+    assert client.get("/temps").status_code == 200  # crée les activités par défaut
+    client.post("/temps", data={"csrf": jeton, "date": "2026-10-05", "dossier_id": dossier["id"],
+                                "activite_code": "9.1", "heures": "1,5"})
+    client.post("/temps", data={"csrf": jeton, "date": "2026-10-06", "dossier_id": dossier["id"],
+                                "activite_code": "1.1", "heures": "4"})
+    client.post("/temps", data={"csrf": jeton, "date": "2026-10-06", "dossier_id": dossier["id"],
+                                "activite_code": "1.1", "heures": "abc"})  # refusé
+    client.post("/honoraires", data={"csrf": jeton, "date": "2026-10-31", "dossier_id": dossier["id"],
+                                     "numero": "F-001", "montant": "150 000"})
+    conn.execute("UPDATE activites SET temps_perdu = 1 WHERE code = '9.1'")
+    conn.commit()
+    assert conn.execute("SELECT COUNT(*) FROM temps").fetchone()[0] == 2
+
+    lignes, totaux, *_ = calculer(conn, "2026-10")
+    assert lignes[0]["ca"] == 150000 and lignes[0]["heures"] == 5.5 and lignes[0]["heures_perdues"] == 1.5
+    assert lignes[0]["cout"] == 5.5 * 5000
+    page = client.get("/rentabilite?mois=2026-10").get_data(as_text=True)
+    assert "FCFA" in page and "€" not in page
+
+
+def test_collaborateur_ne_supprime_pas_les_temps_des_autres(app_benin):
+    client, conn, jeton = _connecter(app_benin, "collab@cabinet.test", "collaborateur")
+    collegue = conn.execute("INSERT INTO users (email, nom) VALUES ('collegue@cabinet.test', 'Collègue')").lastrowid
+    autre = conn.execute("INSERT INTO temps (date, user_id, duree_s) VALUES ('2026-10-05', ?, 3600)",
+                         (collegue,)).lastrowid
+    conn.commit()
+    client.post(f"/temps/{autre}/supprimer", data={"csrf": jeton})
+    assert conn.execute("SELECT COUNT(*) FROM temps").fetchone()[0] == 1
+    assert client.get("/honoraires").status_code == 403
+
+
+def test_edition_inconnue():
+    with pytest.raises(RuntimeError):
+        create_app({"SECRET_KEY": "x", "EDITION": "senegal"})
