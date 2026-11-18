@@ -44,6 +44,8 @@ textarea{width:100%;min-height:60px}
 #etat{font-size:12px;opacity:.9}
 .statut select{min-width:110px}.statut input{width:150px;margin-top:4px}
 .num{text-align:right;white-space:nowrap}
+.grille input{width:62px;text-align:right;padding:4px 6px}.grille td,.grille th{white-space:nowrap}.grille tfoot td{font-weight:700;background:#f7f9fc}
+.jauge{display:inline-block;min-width:48px;text-align:right}.sous{color:var(--rouge);font-weight:600}.limite{color:var(--orange);font-weight:600}
 a{color:var(--bleu2)}
 @media print{header,.barre,.filtres,button{display:none!important}}
 </style>
@@ -152,6 +154,18 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt
 const fcfa = v => (Math.round(Number(v)||0)).toLocaleString("fr-FR") + " FCFA";
 const dfr = s => s ? s.split("-").reverse().join("/") : "";
 
+const lundi = d => plusJours(d, -((d.getUTCDay()+6)%7));
+const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+const hfr = v => (Math.round((Number(v)||0)*100)/100).toLocaleString("fr-FR");
+const heuresAttendues = c => Number(c && c.heures_semaine) || 40;
+function heuresSemaine(cid, debut){ const fin = iso(plusJours(debut, 6)), d0 = iso(debut);
+  return vivants("temps").filter(x => x.collaborateur_id === cid && x.date >= d0 && x.date <= fin).reduce((s,x) => s + (Number(x.heures)||0), 0); }
+/* Budget d'heures : temps passé sur l'année civile en cours rapporté au budget annuel du dossier. */
+function budget(d){ const a = String(aujourdhui().getUTCFullYear()), b = Number(d.budget_heures)||0;
+  const h = vivants("temps").filter(x => x.dossier_id === d.id && (x.date||"").startsWith(a)).reduce((s,x) => s + (Number(x.heures)||0), 0);
+  return {h, b, pct: b ? h / b : null, niveau: !b ? "" : h > b ? "depasse" : h >= 0.8*b ? "proche" : "ok"}; }
+const BADGE_BUDGET = {depasse:'<span class="badge b-retard">Budget dépassé</span>', proche:'<span class="badge b-proche">Budget ≥ 80 %</span>', ok:"", "":""};
+
 function toucher(obj){ obj.maj = maintenant(); sale = true; programmerEnregistrement(); }
 
 /* Fusion de deux versions du fichier : pour chaque fiche, la plus récente l'emporte.
@@ -176,6 +190,12 @@ function enrichir(){
     e.dossier_nom = d.nom || ""; e.responsable = c.nom || ""; e.responsable_email = c.email || "";
     e.dossier_actif = !d.supprime && d.actif !== false;
   }
+  /* Heures saisies par collaborateur sur les 8 dernières semaines (contrôle de saisie, rappel du lundi). */
+  const l0 = lundi(aujourdhui());
+  data.resume_temps = [];
+  for (const c of vivants("collaborateurs")) for (let k = 0; k < 8; k++) { const deb = plusJours(l0, -7*k);
+    data.resume_temps.push({collaborateur: c.nom, email: c.email || "", semaine_debut: iso(deb), heures: Math.round(heuresSemaine(c.id, deb)*100)/100,
+      attendues: heuresAttendues(c), complet: heuresSemaine(c.id, deb) >= 0.9*heuresAttendues(c)}); }
   data.enregistre_le = maintenant(); data.enregistre_le_jour = t;
 }
 
@@ -271,13 +291,13 @@ function remplirMoi(){ const s = document.getElementById("moi");
   s.value = moi(); s.onchange = () => { localStorage.setItem("echeances-benin-moi", s.value); afficher(); }; }
 
 /* ===================================================================== ÉCRANS */
-const PAGES = [["tableau","Tableau de bord"],["echeances","Échéances"],["dossiers","Dossiers"],["temps","Saisie des temps"],
+const PAGES = [["tableau","Tableau de bord"],["echeances","Échéances"],["dossiers","Dossiers"],["semaine","Ma semaine"],["temps","Saisie des temps"],["suivi","Suivi des temps"],
   ["honoraires","Honoraires"],["rentabilite","Rentabilité"],["collaborateurs","Collaborateurs"],["parametres","Paramètres"]];
 window.addEventListener("hashchange", () => afficher());
 function afficher(){
   const [page, arg] = location.hash.slice(1).split("/");
   document.getElementById("menu").innerHTML = PAGES.map(([k,l]) => `<a href="#${k}" class="${page===k || (page==="dossier" && k==="dossiers") ? "actif":""}">${l}</a>`).join("");
-  const f = {tableau, echeances, dossiers, dossier: () => fiche(arg), temps, honoraires, rentabilite, collaborateurs, parametres}[page] || tableau;
+  const f = {tableau, echeances, dossiers, dossier: () => fiche(arg), semaine: () => semaine(arg), temps, suivi, honoraires, rentabilite, collaborateurs, parametres}[page] || tableau;
   document.getElementById("page").innerHTML = ""; f();
 }
 const $ = s => document.querySelector(s);
@@ -313,7 +333,11 @@ function tableau(){
   ecrire(`<h1>Tableau de bord</h1>
   <div class="cartes"><div class="carte"><div class="n r">${retard.length}</div><div class="l">En retard</div></div>
   <div class="carte"><div class="n o">${proche.length}</div><div class="l">À traiter sous 7 jours</div></div>
-  <div class="carte"><div class="n v">${faitesMois.length} / ${duMois.length}</div><div class="l">Échéances faites en ${MOIS[t.getUTCMonth()]} ${t.getUTCFullYear()}</div></div></div>
+  <div class="carte"><div class="n v">${faitesMois.length} / ${duMois.length}</div><div class="l">Échéances faites en ${MOIS[t.getUTCMonth()]} ${t.getUTCFullYear()}</div></div>
+  ${(() => { const sp = plusJours(lundi(t), -7), cs = vivants("collaborateurs").filter(c => !moi() || c.id === moi()), inc = cs.filter(c => heuresSemaine(c.id, sp) < 0.9*heuresAttendues(c));
+     return `<a class="carte" href="#suivi" style="text-decoration:none;color:inherit"><div class="n ${inc.length ? "r" : "v"}">${inc.length}</div><div class="l">Temps incomplets la semaine dernière${inc.length ? " : " + inc.map(c => esc(c.nom)).join(", ") : ""}</div></a>`; })()}
+  ${(() => { const ds = vivants("dossiers").filter(d => d.actif !== false && (!moi() || d.collaborateur_id === moi())).map(d => [d, budget(d)]).filter(([, b]) => b.niveau === "depasse" || b.niveau === "proche");
+     return `<a class="carte" href="#suivi" style="text-decoration:none;color:inherit"><div class="n ${ds.some(([, b]) => b.niveau === "depasse") ? "r" : ds.length ? "o" : "v"}">${ds.length}</div><div class="l">Dossiers à 80 % ou plus de leur budget d'heures</div></a>`; })()}</div>
   <div class="barre"><button class="sec" id="mails">✉ Préparer les e-mails d'alerte</button><span class="note">Ouvre un e-mail prêt à envoyer pour chaque collaborateur concerné.</span></div>
   <h2>À traiter dans les 30 prochains jours (et retards)</h2>${tableEcheances(a30)}`);
   brancherStatuts(); $("#mails").onclick = preparerMails;
@@ -356,10 +380,10 @@ function echeances(){
 function dossiers(){
   const l = vivants("dossiers").sort((a,b) => a.nom.localeCompare(b.nom));
   ecrire(`<h1>Dossiers</h1><div class="barre"><a class="btn" href="#dossier/nouveau">+ Nouveau dossier</a></div>
-  ${l.length ? `<table><thead><tr><th>Dossier</th><th>Forme</th><th>Clôture</th><th>TVA</th><th>Responsable</th><th class="num">En retard</th><th class="num">Sous 7 jours</th></tr></thead><tbody>
+  ${l.length ? `<table><thead><tr><th>Dossier</th><th>Forme</th><th>Clôture</th><th>TVA</th><th>Responsable</th><th class="num">Heures / budget</th><th class="num">En retard</th><th class="num">Sous 7 jours</th></tr></thead><tbody>
   ${l.map(d => { const e = echeancesVisibles().filter(x => x.dossier_id === d.id), c = parId("collaborateurs", d.collaborateur_id) || {};
     return `<tr><td><a href="#dossier/${d.id}">${esc(d.nom)}</a>${d.actif === false ? ' <span class="note">(inactif)</span>' : ""}</td><td>${esc(d.forme)}</td><td>${dfr(d.cloture)}</td>
-    <td>${esc(d.regime_tva)}</td><td>${esc(c.nom || "—")}</td><td class="num">${e.filter(x => niveau(x)==="retard").length || ""}</td><td class="num">${e.filter(x => niveau(x)==="proche").length || ""}</td></tr>`; }).join("")}
+    <td>${esc(d.regime_tva)}</td><td>${esc(c.nom || "—")}</td><td class="num">${(b => b.b ? `${hfr(b.h)} / ${hfr(b.b)} h ${BADGE_BUDGET[b.niveau]}` : (b.h ? hfr(b.h) + " h" : ""))(budget(d))}</td><td class="num">${e.filter(x => niveau(x)==="retard").length || ""}</td><td class="num">${e.filter(x => niveau(x)==="proche").length || ""}</td></tr>`; }).join("")}
   </tbody></table>` : `<div class="vide">Aucun dossier.</div>`}`);
 }
 
@@ -383,6 +407,7 @@ function fiche(id){
   ${cases.map(([k,l]) => `<label class="case"><input type="checkbox" name="${k}" ${d[k] ? "checked" : ""}> ${l}</label>`).join("")}
   <label class="plein">Notes<textarea name="notes">${esc(d.notes)}</textarea></label>
   <div class="plein barre"><button>Enregistrer et calculer les échéances</button>${nouveau ? "" : `<button type="button" class="danger" id="suppr">Supprimer le dossier</button>`}<a href="#dossiers">Annuler</a></div></form>
+  ${nouveau ? "" : (b => b.b ? `<p>Temps passé en ${aujourdhui().getUTCFullYear()} : <b>${hfr(b.h)} h</b> sur un budget de ${hfr(b.b)} h (${Math.round(100*b.pct)} %) ${BADGE_BUDGET[b.niveau]}</p>` : "")(budget(d))}
   ${nouveau ? "" : `<h2>Échéances du dossier</h2>${tableEcheances(echeancesVisibles().filter(e => e.dossier_id === d.id).sort((a,b)=>a.date_limite.localeCompare(b.date_limite)), false)}`}`);
   $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target), o = nouveau ? {id: uid(), suivi_depuis: iso(aujourdhui())} : d;
     for (const k of ["nom","forme","ifu","cloture","regime_imposition","regime_tva","collaborateur_id","notes"]) o[k] = (f.get(k) || "").trim();
@@ -396,14 +421,14 @@ function fiche(id){
 
 function collaborateurs(){
   const l = vivants("collaborateurs");
-  ecrire(`<h1>Collaborateurs</h1><table><thead><tr><th>Nom</th><th>E-mail</th><th class="num">Coût horaire chargé (FCFA)</th><th></th></tr></thead><tbody>
+  ecrire(`<h1>Collaborateurs</h1><table><thead><tr><th>Nom</th><th>E-mail</th><th class="num">Coût horaire chargé (FCFA)</th><th class="num">Heures attendues / semaine</th><th></th></tr></thead><tbody>
   ${l.map(c => `<tr><td><input data-c="${c.id}" data-k="nom" value="${esc(c.nom)}"></td><td><input data-c="${c.id}" data-k="email" type="email" value="${esc(c.email)}"></td>
-  <td class="num"><input data-c="${c.id}" data-k="taux" type="number" min="0" value="${esc(c.taux)}"></td><td><button class="sec" data-sup="${c.id}">Retirer</button></td></tr>`).join("")}
-  <tr><td><input id="nn" placeholder="Nom"></td><td><input id="ne" type="email" placeholder="e-mail"></td><td class="num"><input id="nt" type="number" min="0" placeholder="0"></td><td><button id="aj">Ajouter</button></td></tr>
-  </tbody></table><p class="note">Le coût horaire chargé (salaire et charges ramenés à l'heure) sert au calcul de la rentabilité. L'e-mail sert aux alertes.</p>`);
-  document.querySelectorAll("[data-c]").forEach(el => el.onchange = () => { const c = parId("collaborateurs", el.dataset.c); c[el.dataset.k] = el.dataset.k === "taux" ? Number(el.value) : el.value.trim(); toucher(c); remplirMoi(); });
+  <td class="num"><input data-c="${c.id}" data-k="taux" type="number" min="0" value="${esc(c.taux)}"></td><td class="num"><input data-c="${c.id}" data-k="heures_semaine" type="number" min="0" step="0.5" value="${esc(heuresAttendues(c))}"></td><td><button class="sec" data-sup="${c.id}">Retirer</button></td></tr>`).join("")}
+  <tr><td><input id="nn" placeholder="Nom"></td><td><input id="ne" type="email" placeholder="e-mail"></td><td class="num"><input id="nt" type="number" min="0" placeholder="0"></td><td class="num"><input id="nh" type="number" min="0" step="0.5" value="40"></td><td><button id="aj">Ajouter</button></td></tr>
+  </tbody></table><p class="note">Le coût horaire chargé (salaire et charges ramenés à l'heure) sert au calcul de la rentabilité. L'e-mail sert aux alertes. Les heures attendues servent au contrôle de saisie des temps (semaine incomplète sous 90 %).</p>`);
+  document.querySelectorAll("[data-c]").forEach(el => el.onchange = () => { const c = parId("collaborateurs", el.dataset.c); c[el.dataset.k] = ["taux","heures_semaine"].includes(el.dataset.k) ? Number(el.value) : el.value.trim(); toucher(c); remplirMoi(); });
   document.querySelectorAll("[data-sup]").forEach(b => b.onclick = () => { const c = parId("collaborateurs", b.dataset.sup); if (confirm(`Retirer ${c.nom} ?`)) { c.supprime = true; toucher(c); remplirMoi(); afficher(); } });
-  $("#aj").onclick = () => { const nom = $("#nn").value.trim(); if (!nom) return; const c = {id: uid(), nom, email: $("#ne").value.trim(), taux: Number($("#nt").value)||0};
+  $("#aj").onclick = () => { const nom = $("#nn").value.trim(); if (!nom) return; const c = {id: uid(), nom, email: $("#ne").value.trim(), taux: Number($("#nt").value)||0, heures_semaine: Number($("#nh").value)||40};
     data.collaborateurs.push(c); toucher(c); remplirMoi(); afficher(); };
 }
 
@@ -429,6 +454,71 @@ function temps(){
       heures: Number(f.get("heures")), facturable: f.has("facturable"), description: f.get("description").trim()};
     data.temps.push(x); toucher(x); afficher(); };
   document.querySelectorAll("[data-sup]").forEach(b => b.onclick = () => { const x = parId("temps", b.dataset.sup); x.supprime = true; toucher(x); afficher(); });
+}
+
+/* Feuille de la semaine : une ligne par dossier, une colonne par jour. Une case affiche le total du jour ;
+   la modifier ajuste une saisie « feuille de semaine » sans toucher aux saisies détaillées. */
+function semaine(arg){
+  const cid = sessionStorage.getItem("semaine-collab") || moi() || (vivants("collaborateurs")[0]||{}).id || "";
+  const deb = arg ? lundi(deIso(arg)) : lundi(aujourdhui()), jours = JOURS.map((_, i) => iso(plusJours(deb, i))), fin = iso(plusJours(deb, 6));
+  const c = parId("collaborateurs", cid);
+  if (!vivants("collaborateurs").length || !vivants("dossiers").length) return ecrire(`<h1>Ma semaine</h1><div class="vide">Ajoutez d'abord des collaborateurs et des dossiers.</div>`);
+  const tps = vivants("temps").filter(x => x.collaborateur_id === cid && x.date >= jours[0] && x.date <= fin);
+  const extra = JSON.parse(sessionStorage.getItem("semaine-lignes") || "[]");
+  const lignes = [...new Set([...tps.map(x => x.dossier_id), ...extra])].map(id => parId("dossiers", id)).filter(Boolean).sort((a,b) => a.nom.localeCompare(b.nom));
+  const cellule = (did, j) => tps.filter(x => x.dossier_id === did && x.date === j).reduce((s,x) => s + (Number(x.heures)||0), 0);
+  const totJour = j => tps.filter(x => x.date === j).reduce((s,x) => s + (Number(x.heures)||0), 0), total = tps.reduce((s,x) => s + (Number(x.heures)||0), 0);
+  const att = heuresAttendues(c), cls = total >= 0.9*att ? "ok" : "sous";
+  ecrire(`<h1>Ma semaine</h1><div class="filtres">
+  <select id="sc">${vivants("collaborateurs").map(x => `<option value="${x.id}" ${x.id===cid?"selected":""}>${esc(x.nom)}</option>`).join("")}</select>
+  <a class="btn sec" href="#semaine/${iso(plusJours(deb,-7))}">← Semaine précédente</a>
+  <b style="align-self:center">Semaine du ${dfr(jours[0])} au ${dfr(jours[5])}</b>
+  <a class="btn sec" href="#semaine/${iso(plusJours(deb,7))}">Semaine suivante →</a>
+  ${iso(deb) !== iso(lundi(aujourdhui())) ? `<a class="btn sec" href="#semaine">Cette semaine</a>` : ""}</div>
+  <p>Total : <b class="${cls}">${hfr(total)} h</b> sur ${hfr(att)} h attendues ${total < 0.9*att ? '<span class="badge b-retard">Semaine incomplète</span>' : '<span class="badge b-fait">Complète</span>'}</p>
+  <table class="grille"><thead><tr><th>Dossier</th>${jours.map((j,i) => `<th class="num">${JOURS[i].slice(0,3)}. ${j.slice(8)}/${j.slice(5,7)}</th>`).join("")}<th class="num">Total</th></tr></thead><tbody>
+  ${lignes.map(d => `<tr><td>${esc(d.nom)}</td>${jours.map(j => `<td class="num"><input type="number" min="0" step="0.25" data-d="${d.id}" data-j="${j}" value="${cellule(d.id, j) || ""}"></td>`).join("")}
+  <td class="num"><b>${hfr(jours.reduce((s,j) => s + cellule(d.id, j), 0))}</b></td></tr>`).join("")}
+  <tr><td colspan="8"><select id="ajd"><option value="">+ Ajouter un dossier à la semaine…</option>${vivants("dossiers").filter(d => d.actif !== false && !lignes.includes(d)).sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}">${esc(d.nom)}</option>`).join("")}</select></td></tr>
+  </tbody><tfoot><tr><td>Total du jour</td>${jours.map(j => `<td class="num">${hfr(totJour(j))}</td>`).join("")}<td class="num">${hfr(total)}</td></tr></tfoot></table>
+  <p class="note">Saisissez les heures en décimal (1,5 = 1 h 30). Pour préciser l'activité ou un temps non facturable, utilisez « Saisie des temps » : les deux écrans se complètent.</p>`);
+  $("#sc").onchange = () => { sessionStorage.setItem("semaine-collab", $("#sc").value); afficher(); };
+  $("#ajd").onchange = () => { if (!$("#ajd").value) return; sessionStorage.setItem("semaine-lignes", JSON.stringify([...extra, $("#ajd").value])); afficher(); };
+  document.querySelectorAll("[data-d]").forEach(el => el.onchange = () => {
+    const did = el.dataset.d, j = el.dataset.j, voulu = Math.max(0, Number(String(el.value).replace(",", "."))||0);
+    const id = `semaine|${cid}|${did}|${j}`, autres = tps.filter(x => x.dossier_id === did && x.date === j && x.id !== id).reduce((s,x) => s + (Number(x.heures)||0), 0);
+    let x = parId("temps", id); const h = Math.max(0, voulu - autres);
+    if (!x) { if (!h) return afficher(); x = {id, date: j, collaborateur_id: cid, dossier_id: did, activite: "Feuille de semaine", facturable: true, description: ""}; data.temps.push(x); }
+    x.heures = h; x.supprime = !h; toucher(x); afficher(); });
+}
+
+/* Suivi des temps : par collaborateur (mois choisi) et contrôle des 4 dernières semaines ; budgets d'heures par dossier. */
+function suivi(){
+  const t = aujourdhui(), p = sessionStorage.getItem("periode-suivi") || iso(t).slice(0,7), dans = s => s && s.startsWith(p);
+  const moisOpts = Array.from({length: 12}, (_, i) => iso(ajouterMois(D(t.getUTCFullYear(), t.getUTCMonth()+1, 1), -i)).slice(0,7));
+  const semaines = [1,2,3,4].map(k => plusJours(lundi(t), -7*k)).reverse();
+  const cs = vivants("collaborateurs");
+  const lignes = cs.map(c => { const l = vivants("temps").filter(x => x.collaborateur_id === c.id && dans(x.date));
+    const h = l.reduce((s,x) => s + (Number(x.heures)||0), 0), f = l.filter(x => x.facturable !== false).reduce((s,x) => s + (Number(x.heures)||0), 0);
+    return {c, h, f, nf: h - f, cout: h * (Number(c.taux)||0), nd: new Set(l.map(x => x.dossier_id)).size}; });
+  const budgets = vivants("dossiers").filter(d => d.actif !== false && Number(d.budget_heures)).map(d => [d, budget(d)]).sort((a,b) => b[1].pct - a[1].pct);
+  ecrire(`<h1>Suivi des temps</h1>
+  <h2>Contrôle de saisie — 4 dernières semaines</h2>
+  ${cs.length ? `<table><thead><tr><th>Collaborateur</th>${semaines.map(s => `<th class="num">Sem. du ${dfr(iso(s)).slice(0,5)}</th>`).join("")}<th class="num">Attendu / sem.</th></tr></thead><tbody>
+  ${cs.map(c => `<tr><td><a href="#semaine/${iso(semaines[3])}" data-sc="${c.id}">${esc(c.nom)}</a></td>${semaines.map(s => { const h = heuresSemaine(c.id, s);
+     return `<td class="num ${h < 0.9*heuresAttendues(c) ? "sous" : ""}">${hfr(h)} h</td>`; }).join("")}<td class="num">${hfr(heuresAttendues(c))} h</td></tr>`).join("")}
+  </tbody></table><p class="note">En rouge : moins de 90 % des heures attendues. Le lundi, Make peut envoyer un rappel aux collaborateurs concernés.</p>` : `<div class="vide">Aucun collaborateur.</div>`}
+  <h2>Par collaborateur</h2><div class="filtres"><select id="p">${moisOpts.map(m => `<option value="${m}" ${m===p?"selected":""}>${MOIS[Number(m.slice(5))-1]} ${m.slice(0,4)}</option>`).join("")}</select></div>
+  ${lignes.length ? `<table><thead><tr><th>Collaborateur</th><th class="num">Heures</th><th class="num">Facturables</th><th class="num">Non facturables</th><th class="num">% facturable</th><th class="num">Coût</th><th class="num">Dossiers</th></tr></thead><tbody>
+  ${lignes.map(x => `<tr><td>${esc(x.c.nom)}</td><td class="num">${hfr(x.h)}</td><td class="num">${hfr(x.f)}</td><td class="num">${hfr(x.nf)}</td>
+  <td class="num">${x.h ? Math.round(100*x.f/x.h) + " %" : "—"}</td><td class="num">${fcfa(x.cout)}</td><td class="num">${x.nd}</td></tr>`).join("")}</tbody></table>` : ""}
+  <h2>Budgets d'heures des dossiers (${t.getUTCFullYear()})</h2>
+  ${budgets.length ? `<table><thead><tr><th>Dossier</th><th>Responsable</th><th class="num">Heures passées</th><th class="num">Budget</th><th class="num">Consommé</th><th></th></tr></thead><tbody>
+  ${budgets.map(([d, b]) => `<tr class="${b.niveau === "depasse" ? "retard" : ""}"><td><a href="#dossier/${d.id}">${esc(d.nom)}</a></td><td>${esc((parId("collaborateurs", d.collaborateur_id)||{}).nom || "—")}</td>
+  <td class="num">${hfr(b.h)} h</td><td class="num">${hfr(b.b)} h</td><td class="num ${b.niveau === "depasse" ? "sous" : b.niveau === "proche" ? "limite" : ""}">${Math.round(100*b.pct)} %</td><td>${BADGE_BUDGET[b.niveau]}</td></tr>`).join("")}
+  </tbody></table>` : `<div class="vide">Aucun budget d'heures renseigné : indiquez-le dans la fiche de chaque dossier.</div>`}`);
+  $("#p").onchange = () => { sessionStorage.setItem("periode-suivi", $("#p").value); afficher(); };
+  document.querySelectorAll("[data-sc]").forEach(a => a.onclick = () => sessionStorage.setItem("semaine-collab", a.dataset.sc));
 }
 
 function honoraires(){
