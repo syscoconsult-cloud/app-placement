@@ -318,3 +318,18 @@ def test_echec_de_synchronisation_previent_les_administrateurs(app, conn, monkey
     assert resultat.exit_code != 0
     assert [m["To"] for m in envoyes] == ["associe@cabinet.test"]
     assert "a échoué" in envoyes[0]["Subject"]
+
+
+def test_fichier_config_lu_sans_ecraser_l_environnement(tmp_path, monkeypatch):
+    from app import lire_fichier_config
+    f = tmp_path / "config.env"
+    f.write_text("# commentaire\nEDITION=benin\nSMTP_MOT_DE_PASSE=a=b#c\nURL_APPLICATION=https://x\n", encoding="utf-8")
+    monkeypatch.delenv("SMTP_MOT_DE_PASSE", raising=False)
+    monkeypatch.setenv("EDITION", "france")
+    monkeypatch.delenv("URL_APPLICATION", raising=False)
+    lire_fichier_config(str(f))
+    import os
+    assert os.environ["EDITION"] == "france"          # l'environnement du serveur reste prioritaire
+    assert os.environ["SMTP_MOT_DE_PASSE"] == "a=b#c"  # valeur prise telle quelle après le premier « = »
+    assert os.environ["URL_APPLICATION"] == "https://x"
+    lire_fichier_config(str(tmp_path / "absent.env"))  # fichier absent : sans effet

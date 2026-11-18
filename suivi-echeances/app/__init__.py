@@ -22,8 +22,24 @@ CONFIG_ENV = [
 ]
 
 
+def lire_fichier_config(chemin):
+    """Réglages « NOM=valeur » d'un fichier privé (hébergeurs sans variables d'environnement
+    partagées entre le site et les tâches planifiées, ex. alwaysdata). L'environnement
+    du serveur reste prioritaire."""
+    if not chemin or not os.path.isfile(chemin):
+        return
+    with open(chemin, encoding="utf-8") as f:
+        for ligne in f:
+            ligne = ligne.strip()
+            if ligne and not ligne.startswith("#") and "=" in ligne:
+                nom, valeur = ligne.split("=", 1)
+                os.environ.setdefault(nom.strip(), valeur.strip())
+
+
 def create_app(config=None):
     app = Flask(__name__)
+    if not (config or {}).get("TESTING"):
+        lire_fichier_config(os.environ.get("FICHIER_CONFIG") or os.path.join(app.instance_path, "config.env"))
     app.config.update(DATABASE=os.path.join(app.instance_path, "echeances.sqlite3"),
                       SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
     app.config.update({k: os.environ[k] for k in CONFIG_ENV if os.environ.get(k)})
