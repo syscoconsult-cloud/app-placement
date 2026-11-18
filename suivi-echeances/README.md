@@ -103,6 +103,6 @@ export JSON au format de Pennylane (exemple : `tests/export_pennylane_exemple.js
   e-services de la DGI).
 - Bénin : les fêtes musulmanes (dates mobiles) ne sont pas prises en compte
   dans les reports. Dates à confirmer avec le CGI en vigueur (signalées « à confirmer »
-  dans le référentiel) : patente, TPS, IRF, périodicité CNSS, dépôt au RCCM.
+  dans le référentiel) : TPS, IRF du propriétaire, périodicité CNSS, dépôt au RCCM.
 - Les dates légales évoluent avec les lois de finances : relire le référentiel
   (`echeances.py`) chaque année.
