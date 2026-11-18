@@ -102,7 +102,7 @@ export JSON au format de Pennylane (exemple : `tests/export_pennylane_exemple.js
 - Bénin : tous les statuts se cochent à la main (pas de connexion aux
   e-services de la DGI).
 - Bénin : les fêtes musulmanes (dates mobiles) ne sont pas prises en compte
-  dans les reports ; la patente n'est pas générée ; la périodicité CNSS et le
-  délai de dépôt au RCCM sont à confirmer.
+  dans les reports. Dates à confirmer avec le CGI en vigueur (signalées « à confirmer »
+  dans le référentiel) : patente, TPS, IRF, périodicité CNSS, dépôt au RCCM.
 - Les dates légales évoluent avec les lois de finances : relire le référentiel
   (`echeances.py`) chaque année.

@@ -144,6 +144,8 @@ def _commandes(app):
                 "Les statuts de déclaration, les temps et les factures n'ont pas été mis à jour. "
                 "Le détail figure dans Paramètres > Dernières synchronisations.")
             raise click.ClickException(f"Échec de la synchronisation : {exc}") from exc
+        finally:
+            conn.close()  # sinon la connexion reste ouverte en transaction après un échec
         click.echo(f"Synchronisation terminée : {resume}")
 
     @app.cli.command("alertes")
@@ -151,7 +153,10 @@ def _commandes(app):
     def cmd_alertes(simulation):
         """Envoie le récapitulatif quotidien des échéances en retard ou proches."""
         conn = db.connect(app.config["DATABASE"])
-        messages = envoyer_alertes(conn, app.config, simulation=simulation)
+        try:
+            messages = envoyer_alertes(conn, app.config, simulation=simulation)
+        finally:
+            conn.close()
         for m in messages:
             click.echo(f"--- À : {m['To']} | {m['Subject']}\n{m.get_content()}" if simulation else f"Envoyé à {m['To']}")
         click.echo(f"{len(messages)} e-mail(s).")

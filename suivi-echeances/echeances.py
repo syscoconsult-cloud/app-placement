@@ -76,10 +76,21 @@ REFERENTIEL = [
      "15 du mois suivant si effectif ≥ 20 ; sinon trimestriel, 15 du mois suivant le trimestre", PORTAIL_CNSS_BJ, True),
     ("BJ-IS-AC", "IS — acomptes", "Bénin", "Fiscale", "Régime d'imposition = IS", "Trimestrielle",
      "10 mars, 10 juin, 10 septembre, 10 décembre", PORTAIL_DGI_BJ, False),
-    ("BJ-DSF", "Dépôt des états financiers (DSF) et solde IS", "Bénin", "Fiscale", "Tous dossiers", "Annuelle",
+    ("BJ-DSF", "Dépôt des états financiers (DSF) et solde IS", "Bénin", "Fiscale", "Régime d'imposition = IS (réel)", "Annuelle",
      "30 avril de l'année suivant la clôture", PORTAIL_DGI_BJ, False),
-    ("BJ-PATENTE", "Patente", "Bénin", "Fiscale", "Tous dossiers", "Annuelle",
-     "Non générée automatiquement : échéance à confirmer selon le CGI et l'avis d'imposition", PORTAIL_DGI_BJ, True),
+    ("BJ-PATENTE-AC", "Patente — acompte (50 % de la patente N-1)", "Bénin", "Fiscale",
+     "Régime d'imposition = IS (réel)", "Annuelle", "10 février", PORTAIL_DGI_BJ, True),
+    ("BJ-PATENTE", "Patente — solde", "Bénin", "Fiscale", "Régime d'imposition = IS (réel)", "Annuelle",
+     "30 avril", PORTAIL_DGI_BJ, True),
+    ("BJ-TPS-AC", "TPS — acompte", "Bénin", "Fiscale", "Régime d'imposition = TPS", "Annuelle",
+     "10 février et 10 juin (paiement en deux acomptes si la TPS dépasse 50 000 FCFA)", PORTAIL_DGI_BJ, True),
+    ("BJ-TPS", "TPS — déclaration annuelle et solde", "Bénin", "Fiscale", "Régime d'imposition = TPS", "Annuelle",
+     "30 avril de l'année suivante", PORTAIL_DGI_BJ, True),
+    ("BJ-IRF-RET", "IRF — reversement des retenues sur loyers versés", "Bénin", "Fiscale",
+     "Loyers versés à un bailleur (retenue IRF)", "Mensuelle", "10 du mois suivant le paiement du loyer",
+     PORTAIL_DGI_BJ, True),
+    ("BJ-IRF", "IRF — déclaration annuelle des revenus fonciers", "Bénin", "Fiscale",
+     "Perçoit des loyers (propriétaire)", "Annuelle", "30 avril de l'année suivante", PORTAIL_DGI_BJ, True),
     ("BJ-CPTES", "États financiers SYSCOHADA — révision et production", "Bénin", "Comptable", "Tous dossiers",
      "Selon clôture", "Objectif cabinet : 3 mois après la clôture", None, False),
     ("BJ-AG", "AGO d'approbation des comptes (OHADA)", "Bénin", "Juridique", "Sociétés (hors EI)", "Selon clôture",
@@ -214,8 +225,20 @@ def generer(dos, du, au):
                 elif m % 3 == 0:
                     ajout("BJ-CNSS", date(suiv.year, suiv.month, 15), f"T{m // 3} {a}", fin_mois)
             ajout("BJ-AIB", date(suiv.year, suiv.month, 10), periode, fin_mois)
+            if dos.get("irf_retenue"):
+                ajout("BJ-IRF-RET", date(suiv.year, suiv.month, 10), periode, fin_mois)
             if regime == "IS" and m in (3, 6, 9, 12):
                 ajout("BJ-IS-AC", date(a, m, 10), f"acompte {MOIS[m - 1]} {a}")
+            if regime == "IS" and m == 2:
+                ajout("BJ-PATENTE-AC", date(a, 2, 10), str(a))
+            if regime == "IS" and m == 4:
+                ajout("BJ-PATENTE", date(a, 4, 30), str(a))
+            if regime == "TPS" and m in (2, 6):
+                ajout("BJ-TPS-AC", date(a, m, 10), f"acompte {MOIS[m - 1]} {a}")
+            if regime == "TPS" and m == 4:
+                ajout("BJ-TPS", date(a, 4, 30), f"année {a - 1}")
+            if dos.get("irf_proprietaire") and m == 4:
+                ajout("BJ-IRF", date(a, 4, 30), f"revenus {a - 1}")
 
     # Échéances liées à la clôture de chaque exercice.
     for c in clotures:
@@ -243,7 +266,8 @@ def generer(dos, du, au):
             if dos.get("depot_comptes"):
                 ajout("FR-DEPOT", fin_de_mois(ajouter_mois(c, 7)), ex, c)
         else:
-            ajout("BJ-DSF", date(c.year + 1, 4, 30), ex, c)
+            if regime != "TPS":
+                ajout("BJ-DSF", date(c.year + 1, 4, 30), ex, c)
             ajout("BJ-CPTES", fin_de_mois(ajouter_mois(c, 3)), ex, c)
             if societe:
                 ajout("BJ-AG", fin_de_mois(ajouter_mois(c, 6)), ex, c)

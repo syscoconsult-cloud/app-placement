@@ -22,7 +22,7 @@ STATUTS = ["À faire", "En cours", "Fait"]
 CATEGORIES = ["Comptable", "Fiscale", "Sociale", "Juridique"]
 CHAMPS_DOSSIER = ["nom", "forme", "siren", "cloture", "regime_imposition", "regime_tva", "jour_tva",
                   "effectif", "collaborateur_id", "budget_heures", "honoraires_annuels", "notes"]
-CASES_DOSSIER = ["salaries", "cfe", "acompte_cfe", "cvae", "depot_comptes", "actif"]
+CASES_DOSSIER = ["salaries", "cfe", "acompte_cfe", "cvae", "depot_comptes", "irf_retenue", "irf_proprietaire", "actif"]
 
 
 # Activités proposées à la saisie des temps quand aucune n'est encore définie.

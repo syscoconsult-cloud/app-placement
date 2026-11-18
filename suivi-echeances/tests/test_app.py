@@ -333,3 +333,34 @@ def test_fichier_config_lu_sans_ecraser_l_environnement(tmp_path, monkeypatch):
     assert os.environ["SMTP_MOT_DE_PASSE"] == "a=b#c"  # valeur prise telle quelle après le premier « = »
     assert os.environ["URL_APPLICATION"] == "https://x"
     lire_fichier_config(str(tmp_path / "absent.env"))  # fichier absent : sans effet
+
+
+def test_benin_tps_patente_irf():
+    from datetime import date
+    from echeances import generer
+    base = {"pays": "Bénin", "dossier": "X", "forme": "SARL", "cloture": "2026-12-31", "regime_tva": "Non assujetti",
+            "salaries": False, "depot_comptes": True}
+    def codes(**kw):
+        return {(l["code"], l["date_limite"]) for l in generer({**base, **kw}, date(2027, 1, 1), date(2027, 12, 31))}
+    tps = codes(regime_imposition="TPS")
+    assert {("BJ-TPS-AC", "2027-02-10"), ("BJ-TPS-AC", "2027-06-10"), ("BJ-TPS", "2027-04-30")} <= tps
+    assert not {c for c, _ in tps} & {"BJ-IS-AC", "BJ-DSF", "BJ-PATENTE", "BJ-PATENTE-AC", "BJ-IRF", "BJ-IRF-RET"}
+    reel = codes(regime_imposition="IS", irf_retenue=True, irf_proprietaire=True)
+    assert {("BJ-PATENTE-AC", "2027-02-10"), ("BJ-PATENTE", "2027-04-30"), ("BJ-DSF", "2027-04-30"),
+            ("BJ-IRF", "2027-04-30"), ("BJ-IRF-RET", "2027-02-10")} <= reel
+    assert not {c for c, _ in reel} & {"BJ-TPS", "BJ-TPS-AC"}
+
+
+def test_benin_dossier_tps_avec_loyer(app_benin):
+    client, conn, jeton = _connecter(app_benin)
+    page = client.get("/dossiers/nouveau").get_data(as_text=True)
+    assert "Paie un loyer" in page and ">TPS<" in page
+    r = client.post("/dossiers/nouveau", data={
+        "csrf": jeton, "nom": "Boutique TPS", "forme": "EI", "cloture": "2026-12-31", "regime_imposition": "TPS",
+        "regime_tva": "Non assujetti", "jour_tva": "10", "irf_retenue": "1", "actif": "1"})
+    assert r.status_code == 302
+    d = conn.execute("SELECT * FROM dossiers WHERE nom = 'Boutique TPS'").fetchone()
+    assert d["irf_retenue"] == 1 and d["irf_proprietaire"] == 0
+    codes = {row[0] for row in conn.execute("SELECT code FROM echeances WHERE dossier_id = ?", (d["id"],))}
+    assert {"BJ-IRF-RET", "BJ-TPS-AC", "BJ-TPS"} <= codes and "BJ-DSF" not in codes
+    conn.close()

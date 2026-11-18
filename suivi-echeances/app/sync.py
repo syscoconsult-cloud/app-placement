@@ -81,6 +81,7 @@ def profil(dossier):
         "salaries": bool(dossier["salaries"]), "effectif": dossier["effectif"],
         "cfe": bool(dossier["cfe"]), "acompte_cfe": bool(dossier["acompte_cfe"]),
         "cvae": bool(dossier["cvae"]), "depot_comptes": bool(dossier["depot_comptes"]),
+        "irf_retenue": bool(dossier["irf_retenue"]), "irf_proprietaire": bool(dossier["irf_proprietaire"]),
     }
 
 

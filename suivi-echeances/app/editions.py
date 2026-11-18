@@ -35,11 +35,13 @@ EDITIONS = {
         "saisie_manuelle": True,
         "libelle_identifiant": "IFU",
         "formes": ["SARL", "SARLU", "SA", "SAS", "SASU", "SNC", "GIE", "EI", "Association"],
-        "regimes_imposition": ["IS"],
+        "regimes_imposition": ["IS", "TPS"],
         "regimes_tva": ["Mensuel (Bénin)", "Non assujetti"],
         "jour_tva_defaut": 10,
         "aide_jour_tva": "10 du mois suivant",
-        "cases": [("salaries", "Salariés"), ("depot_comptes", "Dépôt des états financiers au RCCM")],
+        "cases": [("salaries", "Salariés"), ("depot_comptes", "Dépôt des états financiers au RCCM"),
+                  ("irf_retenue", "Paie un loyer (retenue IRF à reverser)"),
+                  ("irf_proprietaire", "Perçoit des loyers (IRF propriétaire)")],
     },
 }
 

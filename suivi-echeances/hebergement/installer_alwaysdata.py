@@ -66,11 +66,12 @@ def main():
         base = demander("  Nom de la base", f"{COMPTE}_echeances")
         utilisateur = demander("  Utilisateur", COMPTE)
         mdp = secret("  Mot de passe de cet utilisateur")
-        print("\nEnvoi des alertes par e-mail (Gmail : mot de passe d'application, pas votre mot de passe habituel)")
-        smtp_hote = demander("  Serveur d'envoi", "smtp.gmail.com")
+        print("\nEnvoi des alertes par e-mail : serveur d'envoi (SMTP) de votre messagerie professionnelle")
+        print("(fourni par l'hébergeur de votre adresse : alwaysdata, OVHcloud, Brevo...)")
+        smtp_hote = demander("  Serveur d'envoi (ex. smtp-compte.alwaysdata.net)", f"smtp-{COMPTE}.alwaysdata.net")
         smtp_port = demander("  Port", "587")
-        smtp_user = demander("  Adresse e-mail d'envoi", "syscoconsult@gmail.com")
-        smtp_mdp = secret("  Mot de passe d'application")
+        smtp_user = demander("  Adresse e-mail d'envoi (ex. echeances@votre-domaine)")
+        smtp_mdp = secret("  Mot de passe de cette adresse")
         lignes = [
             "# Réglages de l'application — fichier privé, ne pas partager.",
             f"EDITION={edition}",

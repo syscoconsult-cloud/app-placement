@@ -239,7 +239,9 @@ def close_db(_exc=None):
 
 
 # Colonnes ajoutées après la première version : ajoutées aux bases existantes.
-MIGRATIONS = [("dossiers", "suivi_depuis", "TEXT")]
+MIGRATIONS = [("dossiers", "suivi_depuis", "TEXT"),
+              ("dossiers", "irf_retenue", "INTEGER NOT NULL DEFAULT 0"),
+              ("dossiers", "irf_proprietaire", "INTEGER NOT NULL DEFAULT 0")]
 
 
 def init_db(conn):
