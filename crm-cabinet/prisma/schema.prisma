@@ -1,0 +1,211 @@
+// Modèle de données du CRM.
+// - Local : SQLite (un seul fichier, data/crm.db).
+// - Version serveur / commercialisée : passer provider à "postgresql" (aucune autre modification).
+// - Chaque table porte un cabinetId : un même serveur pourra héberger plusieurs cabinets
+//   (France, Bénin…) sans que leurs données ne se croisent.
+// Les listes de valeurs (statuts, rôles…) sont stockées en texte et définies dans src/lib/constantes.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Cabinet {
+  id            String   @id @default(cuid())
+  nom           String
+  pays          String   @default("FR") // FR | BJ
+  lienRdv       String? // Calendly / Cal.com / agenda : lien de prise de RDV d'onboarding
+  webhookUrl    String? // Make ou n8n : reçoit les événements du CRM
+  webhookSecret String? // signature HMAC des événements sortants
+  apiCleEntrante String? // clé que Make/n8n doit fournir pour mettre à jour le CRM
+  createdAt     DateTime @default(now())
+
+  utilisateurs Utilisateur[]
+  entites      Entite[]
+  dossiers     Dossier[]
+  journal      JournalAudit[]
+  evenements   EvenementSortant[]
+}
+
+model Utilisateur {
+  id                 String    @id @default(cuid())
+  cabinetId          String
+  cabinet            Cabinet   @relation(fields: [cabinetId], references: [id])
+  email              String    @unique
+  nom                String
+  motDePasseHash     String
+  role               String    @default("collaborateur") // admin | collaborateur
+  totpSecret         String?
+  totpActif          Boolean   @default(false)
+  tentativesEchouees Int       @default(0)
+  verrouilleJusqua   DateTime?
+  actif              Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+
+  dossiersResponsable Dossier[] @relation("responsable")
+}
+
+model Entite {
+  id             String    @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet   @relation(fields: [cabinetId], references: [id])
+  siren          String? // France : SIREN ; Bénin : IFU / RCCM
+  raisonSociale  String
+  formeJuridique String?
+  codeNaf        String?
+  activite       String?
+  adresse        String?
+  dateCreation   DateTime?
+  capital        Float?
+  caEstime       Float?
+  effectif       Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  personnes Personne[]
+  dossiers  Dossier[]
+
+  @@index([cabinetId])
+}
+
+model Personne {
+  id                       String    @id @default(cuid())
+  cabinetId                String
+  entiteId                 String
+  entite                   Entite    @relation(fields: [entiteId], references: [id], onDelete: Cascade)
+  prenom                   String
+  nom                      String
+  role                     String    @default("contact") // dirigeant | beneficiaire_effectif | contact
+  email                    String?
+  telephone                String?
+  dateNaissance            DateTime?
+  lieuNaissance            String?
+  nationalite              String?
+  pourcentageDetention     Float?
+  estPPE                   Boolean   @default(false)
+  dateVerificationIdentite DateTime?
+  createdAt                DateTime  @default(now())
+
+  @@index([cabinetId])
+}
+
+model Dossier {
+  id                String    @id @default(cuid())
+  cabinetId         String
+  cabinet           Cabinet   @relation(fields: [cabinetId], references: [id])
+  entiteId          String
+  entite            Entite    @relation(fields: [entiteId], references: [id])
+  type              String    @default("nouveau") // nouveau | renouvellement
+  source            String?
+  besoin            String?
+  typeMission       String? // tenue | revision | social | juridique | conseil | creation
+  honorairesEstimes Float?
+  statut            String    @default("lead")
+  motifRefus        String?
+  responsableId     String?
+  responsable       Utilisateur? @relation("responsable", fields: [responsableId], references: [id])
+  prochaineRelance  DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  acceptation Acceptation?
+  lcbft       Lcbft?
+  missions    Mission[]
+
+  @@index([cabinetId, statut])
+}
+
+// Prise de connaissance et acceptation (ou renouvellement) de la mission
+model Acceptation {
+  id                  String    @id @default(cuid())
+  dossierId           String    @unique
+  dossier             Dossier   @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  independanceOk      Boolean   @default(false)
+  incompatibiliteAucune Boolean @default(false)
+  competenceOk        Boolean   @default(false)
+  moyensOk            Boolean   @default(false)
+  confrerePrecedent   String    @default("aucun") // aucun | a_contacter | contacte
+  confrereNom         String?
+  confrereDateContact DateTime?
+  confrereReponse     String?
+  commentaire         String?
+  decision            String    @default("en_attente") // en_attente | acceptee | refusee
+  valideLe            DateTime?
+  valideParId         String?
+  updatedAt           DateTime  @updatedAt
+}
+
+// Dossier de lutte contre le blanchiment et le financement du terrorisme
+model Lcbft {
+  id                String    @id @default(cuid())
+  dossierId         String    @unique
+  dossier           Dossier   @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  criteres          String    @default("{}") // JSON : critères cochés (voir src/lib/lcbft.ts)
+  score             Int       @default(0)
+  niveau            String    @default("standard") // faible | standard | renforce
+  niveauForce       Boolean   @default(false)
+  justification     String?
+  identiteVerifiee  Boolean   @default(false)
+  beVerifies        Boolean   @default(false) // bénéficiaires effectifs vérifiés
+  gelVerifieLe      DateTime?
+  gelResultat       String? // aucune_correspondance | correspondance_a_analyser
+  valideLe          DateTime?
+  valideParId       String?
+  prochaineRevue    DateTime?
+  finConservation   DateTime?
+  updatedAt         DateTime  @updatedAt
+}
+
+model Mission {
+  id                String    @id @default(cuid())
+  dossierId         String
+  dossier           Dossier   @relation(fields: [dossierId], references: [id], onDelete: Cascade)
+  type              String
+  perimetre         String?
+  modeHonoraires    String    @default("forfait") // forfait | temps_passe
+  montantHonoraires Float?
+  lmStatut          String    @default("brouillon") // brouillon | envoyee | signee | refusee
+  lmEnvoyeeLe       DateTime?
+  lmSigneeLe        DateTime?
+  idClientPennylane String?
+  createdAt         DateTime  @default(now())
+}
+
+// Journal d'audit : protégé contre toute modification par des triggers SQL (voir migration)
+model JournalAudit {
+  id            String   @id @default(cuid())
+  cabinetId     String
+  cabinet       Cabinet  @relation(fields: [cabinetId], references: [id])
+  utilisateurId String?
+  utilisateurNom String?
+  action        String
+  objetType     String
+  objetId       String?
+  avant         String?
+  apres         String?
+  createdAt     DateTime @default(now())
+
+  @@index([cabinetId, createdAt])
+}
+
+// File d'attente des événements envoyés à Make / n8n.
+// Si l'ordinateur est hors ligne ou Make indisponible, l'événement reste en attente et sera renvoyé.
+model EvenementSortant {
+  id             String    @id @default(cuid())
+  cabinetId      String
+  cabinet        Cabinet   @relation(fields: [cabinetId], references: [id])
+  type           String
+  payload        String
+  statut         String    @default("en_attente") // en_attente | envoye | echec
+  tentatives     Int       @default(0)
+  derniereErreur String?
+  createdAt      DateTime  @default(now())
+  envoyeLe       DateTime?
+
+  @@index([cabinetId, statut])
+}
