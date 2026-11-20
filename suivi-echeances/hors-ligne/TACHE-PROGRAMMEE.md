@@ -34,6 +34,19 @@ Date du jour : heure de Paris.
    "statut":"<accepted|accepted_and_paid|submitted|ready|rejected|draft>","depose_le":"<date de dépôt>"}]}
    (liasses : teledec_status Accepted = accepted, Sent = submitted, ReadyToBeSent = ready, Rejected = rejected ;
     garde les déclarations des 13 derniers mois.)
+   Ajoute dans le même JSON :
+   "temps_depuis":"<1er jour du mois, 3 mois en arrière>",
+   "temps":[{"id":<id de la saisie>,"date":"<date>","collaborateur_email":"<user.email>","pennylane_id":<id du dossier>,
+     "heures":<durée en secondes / 3600>,"activite":"<libellé de l'activité>","facturable":<true|false>,"description":"<commentaire>"}]
+     (run_operations getFirmOwnCompanyTimesheetEntries, filtre date gteq temps_depuis, toutes les pages ; rattache chaque saisie
+      au dossier dont le display_name correspond au client « thirdparty » ; temps saisis et validés uniquement, pas les temps détectés par l'IA),
+   "honoraires":[{"pennylane_id":<id du dossier>,"mois":"<AAAA-MM>","montant":<honoraires HT facturés du mois>}]
+     (getFirmOwnCompanyProfitabilityIndex, firm_id 965, filtre date gteq/lteq mois par mois sur les 12 derniers mois, champ invoiced_amount),
+   "taux":[{"email":"<email du collaborateur>","taux":<coût horaire chargé en vigueur aujourd'hui>}] (getFirmUserHourlyRates),
+   "taches":[{"id":"<id>","pennylane_id":<id du dossier>,"titre":"<titre>","echeance":"<date d'échéance>","statut":"<a_faire|en_cours|fait>",
+     "responsable_email":"<email>"}]
+     (cherche avec search_operations une opération de tâches du cabinet, par exemple « task » ; si elle n'existe pas, mets "taches":[]
+      et signale-le dans le compte rendu).
 4. Dépose ce fichier dans OneDrive (Microsoft 365), dossier « ECHEANCES FISCALES FRANCE », nom « pennylane-synchro.json », en remplaçant l'existant.
 
 ÉTAPE 2 — ALERTES D'ÉCHÉANCES (France et Bénin)
@@ -66,6 +79,9 @@ COMPTE RENDU : dossiers synchronisés, déclarations lues, e-mails envoyés par 
   `@syscoconsulting.fr`, il faudra rattacher ce domaine à Microsoft 365 (il est aujourd'hui chez OVH).
 - La synchronisation est lue par l'outil France à chaque ouverture et à chaque retour sur la fenêtre :
   nouveaux dossiers, responsables, lettres de mission, statuts de TVA et de liasse (« prête mais pas
-  envoyée » et « rejetée » apparaissent en anomalie rouge).
+  envoyée » et « rejetée » apparaissent en anomalie rouge), **temps saisis, honoraires facturés,
+  coûts horaires et tâches**. En France, les collaborateurs saisissent leurs temps et leurs tâches
+  **uniquement dans Pennylane** : l'outil les affiche en lecture seule (aucune double saisie).
+- Au Bénin, tout est saisi dans l'outil (pas de logiciel source).
 - Les échéances sans statut Pennylane (DSN, CFE, AGO, dépôt, LAB, maintien, compte rendu…) se cochent
   dans l'outil.

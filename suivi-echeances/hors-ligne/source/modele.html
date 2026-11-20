@@ -261,7 +261,11 @@ async function accueil(){
    {format:"pennylane-synchro", genere_le, collaborateurs:[{nom,email}],
     dossiers:[{pennylane_id, nom, forme, siren, cloture, regime_imposition, regime_tva, jour_tva, salaries, effectif, collaborateur_email,
                lettre_mission:{statut:"signee"|"envoyee"|"absente", date}}],
-    declarations:[{pennylane_id, type:"TVA"|"LIASSE", periode_fin, statut:"accepted"|"submitted"|"ready"|"rejected"|"draft", depose_le}]} */
+    declarations:[{pennylane_id, type:"TVA"|"LIASSE", periode_fin, statut:"accepted"|"submitted"|"ready"|"rejected"|"draft", depose_le}],
+    temps_depuis, temps:[{id, date, collaborateur_email, pennylane_id, heures, activite, facturable, description}],
+    honoraires:[{pennylane_id, mois:"AAAA-MM", montant}], taux:[{email, taux}],
+    taches:[{id, pennylane_id, titre, echeance, statut:"a_faire"|"en_cours"|"fait", responsable_email}]}
+   Les temps, les honoraires, les coûts horaires et les tâches viennent de Pennylane : ils ne se saisissent pas dans l'outil France. */
 const LIBELLES_PL = {accepted:"acceptée", accepted_and_paid:"acceptée et payée", submitted:"déposée, accusé en attente", ready:"prête, non envoyée", rejected:"rejetée", draft:"brouillon"};
 function importerPennylane(s){
   if (!s || s.format !== "pennylane-synchro") throw new Error("format inconnu");
@@ -294,8 +298,32 @@ function importerPennylane(s){
     else if (r.statut === "rejected") { e.anomalie = "Rejetée par l'administration"; if (e.statut === "Fait") e.statut = "En cours"; }
     if (JSON.stringify([e.statut, e.anomalie, e.pennylane]) !== avant) { toucher(e); n.statuts++; }
   }
+  const parEmail = em => em && vivants("collaborateurs").find(y => (y.email||"").toLowerCase() === em.toLowerCase());
+  const parPl = id => data.dossiers.find(x => x.pennylane_id === String(id) && !x.supprime);
+  for (const t of s.taux || []) { const c = parEmail(t.email); if (c && Number(t.taux) && c.taux !== Number(t.taux)) { c.taux = Number(t.taux); toucher(c); } }
+  if (Array.isArray(s.temps)) { // la synchronisation fait foi sur sa période : remplace les temps Pennylane de cette période
+    n.temps = 0; const depuis = s.temps_depuis || "0000", recus = new Set();
+    for (const t of s.temps) { const c = parEmail(t.collaborateur_email), d = parPl(t.pennylane_id); if (!c || !d || !t.date) continue;
+      const id = "pl-t-" + t.id; recus.add(id); const x = parId("temps", id) || (data.temps.push({id}), parId("temps", id));
+      const v = {date: t.date.slice(0,10), collaborateur_id: c.id, dossier_id: d.id, heures: Math.round((Number(t.heures)||0)*100)/100,
+        activite: t.activite || "Pennylane", facturable: t.facturable !== false, description: t.description || "", supprime: false, pennylane: true};
+      if (Object.entries(v).some(([k, w]) => x[k] !== w)) { Object.assign(x, v); toucher(x); n.temps++; } }
+    for (const x of data.temps) if (x.pennylane && !x.supprime && x.date >= depuis && !recus.has(x.id)) { x.supprime = true; toucher(x); }
+  }
+  if (Array.isArray(s.honoraires)) for (const h of s.honoraires) { const d = parPl(h.pennylane_id); if (!d || !h.mois) continue;
+    const id = `pl-h-${h.pennylane_id}-${h.mois}`, x = parId("honoraires", id) || (data.honoraires.push({id}), parId("honoraires", id));
+    const v = {date: h.mois + "-01", dossier_id: d.id, numero: "Pennylane", montant: Math.round(Number(h.montant)||0), supprime: false, pennylane: true};
+    if (Object.entries(v).some(([k, w]) => x[k] !== w)) { Object.assign(x, v); toucher(x); } }
+  if (Array.isArray(s.taches)) { n.taches = 0; const ST = {a_faire: "À faire", en_cours: "En cours", fait: "Fait"};
+    for (const t of s.taches) { const d = parPl(t.pennylane_id); if (!d || !t.echeance) continue;
+      const id = `${d.id}|PL-TACHE|${t.id}`, x = parId("echeances", id) || (data.echeances.push({id, dossier_id: d.id, code: "PL-TACHE", categorie: "Tâche", portail: null, commentaire: ""}), parId("echeances", id));
+      const st = ST[t.statut] || "À faire";
+      const v = {libelle: t.titre || "Tâche Pennylane", periode: "tâche", date_limite: t.echeance.slice(0,10), statut: st, pennylane: "tâche Pennylane",
+        date_realisation: st === "Fait" ? (x.date_realisation || iso(aujourdhui())) : "", supprime: false};
+      if (Object.entries(v).some(([k, w]) => x[k] !== w)) { Object.assign(x, v); toucher(x); n.taches++; } } }
   data.pennylane_le = s.genere_le; sale = true; programmerEnregistrement();
-  return `Pennylane (${new Date(s.genere_le).toLocaleString("fr-FR")}) : ${n.nouveaux} nouveau(x) dossier(s), ${n.dossiers} mis à jour, ${n.statuts} statut(s) de déclaration`;
+  return `Pennylane (${new Date(s.genere_le).toLocaleString("fr-FR")}) : ${n.nouveaux} nouveau(x) dossier(s), ${n.dossiers} mis à jour, ${n.statuts} statut(s) de déclaration`
+    + (n.temps !== undefined ? `, ${n.temps} temps` : "") + (n.taches !== undefined ? `, ${n.taches} tâche(s)` : "");
 }
 
 /* ===================================================================== MÉTIER */
@@ -318,7 +346,7 @@ function recalculer(dos){
       attendues.delete(e.id); ponct.delete(e.id);
     } else if (["LAB-REVUE","LAB-CONSTITUTION"].includes(e.code) && e.statut !== "Fait") { // revue faite : la date de dernière revue a avancé
       e.statut = "Fait"; e.date_realisation = dos.lab_derniere_revue || iso(aujourdhui()); maj(e);
-    } else if (e.statut === "À faire" && !e.commentaire && e.date_limite >= iso(du) && !e.pennylane) { e.supprime = true; maj(e); }
+    } else if (e.statut === "À faire" && !e.commentaire && e.date_limite >= iso(du) && !e.pennylane && e.code !== "PL-TACHE") { e.supprime = true; maj(e); }
   }
   for (const [id, l] of [...attendues, ...ponct]) { const r = refDe(l.code);
     data.echeances.push({id, dossier_id: dos.id, code: l.code, libelle: `${r.lib} — ${l.periode}`, categorie: r.cat, portail: r.portail,
@@ -340,7 +368,7 @@ function remplirMoi(){ const s = document.getElementById("moi");
   s.value = moi(); s.onchange = () => { localStorage.setItem(CLE + "-moi", s.value); afficher(); }; }
 
 /* ===================================================================== ÉCRANS */
-const PAGES = [["tableau","Tableau de bord"],["echeances","Échéances"],["dossiers","Dossiers"],["semaine","Ma semaine"],["temps","Saisie des temps"],["suivi","Suivi des temps"],["conformite","Conformité"],
+const PAGES = [["tableau","Tableau de bord"],["echeances","Échéances"],["dossiers","Dossiers"],["semaine","Ma semaine"],["temps", PAYS.temps_pennylane ? "Temps" : "Saisie des temps"],["suivi","Suivi des temps"],["conformite","Conformité"],
   ["honoraires","Honoraires"],["rentabilite","Rentabilité"],["collaborateurs","Collaborateurs"],["parametres","Paramètres"]];
 window.addEventListener("hashchange", () => afficher());
 function afficher(){
@@ -358,7 +386,7 @@ function ligneEcheance(e, avecDossier = true){
   ${avecDossier ? `<td><a href="#dossier/${d.id}">${esc(d.nom)}</a></td>` : ""}
   <td><span class="cat">${esc(e.categorie)}</span>${esc(e.libelle)}${e.portail ? ` <a href="${e.portail}" target="_blank" rel="noopener">portail ↗</a>` : ""}</td>
   <td>${esc(c.nom || "—")}</td>
-  <td class="statut"><select data-e="${e.id}" data-champ="statut">${["À faire","En cours","Fait"].map(s => `<option ${s===e.statut?"selected":""}>${s}</option>`).join("")}</select>
+  <td class="statut">${e.code === "PL-TACHE" ? `<b>${esc(e.statut)}</b><div class="note">à modifier dans Pennylane</div>` : `<select data-e="${e.id}" data-champ="statut">${["À faire","En cours","Fait"].map(s => `<option ${s===e.statut?"selected":""}>${s}</option>`).join("")}</select>`}
   <br><input data-e="${e.id}" data-champ="commentaire" placeholder="Commentaire" value="${esc(e.commentaire)}">
   ${e.statut === "Fait" && e.date_realisation ? `<div class="note">fait le ${dfr(e.date_realisation)}</div>` : ""}</td></tr>`;
 }
@@ -516,7 +544,7 @@ function collaborateurs(){
   ${l.map(c => `<tr><td><input data-c="${c.id}" data-k="nom" value="${esc(c.nom)}"></td><td><input data-c="${c.id}" data-k="email" type="email" value="${esc(c.email)}"></td>
   <td class="num"><input data-c="${c.id}" data-k="taux" type="number" min="0" value="${esc(c.taux)}"></td><td class="num"><input data-c="${c.id}" data-k="heures_semaine" type="number" min="0" step="0.5" value="${esc(heuresAttendues(c))}"></td><td><button class="sec" data-sup="${c.id}">Retirer</button></td></tr>`).join("")}
   <tr><td><input id="nn" placeholder="Nom"></td><td><input id="ne" type="email" placeholder="e-mail"></td><td class="num"><input id="nt" type="number" min="0" placeholder="0"></td><td class="num"><input id="nh" type="number" min="0" step="0.5" value="40"></td><td><button id="aj">Ajouter</button></td></tr>
-  </tbody></table><p class="note">Le coût horaire chargé (salaire et charges ramenés à l'heure) sert au calcul de la rentabilité. L'e-mail sert aux alertes. Les heures attendues servent au contrôle de saisie des temps (semaine incomplète sous 90 %).</p>`);
+  </tbody></table><p class="note">Le coût horaire chargé (salaire et charges ramenés à l'heure) sert au calcul de la rentabilité. L'e-mail sert aux alertes.${PAYS.temps_pennylane ? " En France, le coût horaire est repris de Pennylane chaque nuit." : ""} Les heures attendues servent au contrôle de saisie des temps (semaine incomplète sous 90 %).</p>`);
   document.querySelectorAll("[data-c]").forEach(el => el.onchange = () => { const c = parId("collaborateurs", el.dataset.c); c[el.dataset.k] = ["taux","heures_semaine"].includes(el.dataset.k) ? Number(el.value) : el.value.trim(); toucher(c); remplirMoi(); });
   document.querySelectorAll("[data-sup]").forEach(b => b.onclick = () => { const c = parId("collaborateurs", b.dataset.sup); if (confirm(`Retirer ${c.nom} ?`)) { c.supprime = true; toucher(c); remplirMoi(); afficher(); } });
   $("#aj").onclick = () => { const nom = $("#nn").value.trim(); if (!nom) return; const c = {id: uid(), nom, email: $("#ne").value.trim(), taux: Number($("#nt").value)||0, heures_semaine: Number($("#nh").value)||40};
@@ -539,6 +567,7 @@ function temps(){
   ${l.map(x => `<tr><td>${dfr(x.date)}</td><td>${esc((parId("collaborateurs", x.collaborateur_id)||{}).nom)}</td><td>${esc((parId("dossiers", x.dossier_id)||{}).nom)}</td>
   <td>${esc(x.activite)}${x.facturable ? "" : ' <span class="note">(non facturable)</span>'}${x.description ? `<div class="note">${esc(x.description)}</div>` : ""}</td><td class="num">${String(x.heures).replace(".", ",")}</td>
   <td><button class="sec" data-sup="${x.id}">Supprimer</button></td></tr>`).join("")}</tbody></table>` : `<div class="vide">Aucune saisie.</div>`}`);
+  if (PAYS.temps_pennylane) { $("#f").outerHTML = `<p class="note">Les temps, les honoraires et les coûts horaires viennent de <b>Pennylane</b> (synchronisation de la nuit) : saisissez-les dans Pennylane uniquement.</p>`; document.querySelectorAll("[data-sup]").forEach(b => b.remove()); return; }
   if (!vivants("collaborateurs").length || !vivants("dossiers").length) $("#f").innerHTML = `<div class="vide plein">Ajoutez d'abord des collaborateurs et des dossiers.</div>`;
   else $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target);
     const x = {id: uid(), date: f.get("date"), collaborateur_id: f.get("collaborateur_id"), dossier_id: f.get("dossier_id"), activite: f.get("activite"),
@@ -568,13 +597,13 @@ function semaine(arg){
   ${iso(deb) !== iso(lundi(aujourdhui())) ? `<a class="btn sec" href="#semaine">Cette semaine</a>` : ""}</div>
   <p>Total : <b class="${cls}">${hfr(total)} h</b> sur ${hfr(att)} h attendues ${total < 0.9*att ? '<span class="badge b-retard">Semaine incomplète</span>' : '<span class="badge b-fait">Complète</span>'}</p>
   <table class="grille"><thead><tr><th>Dossier</th>${jours.map((j,i) => `<th class="num">${JOURS[i].slice(0,3)}. ${j.slice(8)}/${j.slice(5,7)}</th>`).join("")}<th class="num">Total</th></tr></thead><tbody>
-  ${lignes.map(d => `<tr><td>${esc(d.nom)}</td>${jours.map(j => `<td class="num"><input type="number" min="0" step="0.25" data-d="${d.id}" data-j="${j}" value="${cellule(d.id, j) || ""}"></td>`).join("")}
+  ${lignes.map(d => `<tr><td>${esc(d.nom)}</td>${jours.map(j => `<td class="num">${PAYS.temps_pennylane ? (cellule(d.id, j) ? hfr(cellule(d.id, j)) : "") : `<input type="number" min="0" step="0.25" data-d="${d.id}" data-j="${j}" value="${cellule(d.id, j) || ""}">`}</td>`).join("")}
   <td class="num"><b>${hfr(jours.reduce((s,j) => s + cellule(d.id, j), 0))}</b></td></tr>`).join("")}
-  <tr><td colspan="8"><select id="ajd"><option value="">+ Ajouter un dossier à la semaine…</option>${vivants("dossiers").filter(d => d.actif !== false && !lignes.includes(d)).sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}">${esc(d.nom)}</option>`).join("")}</select></td></tr>
+  ${PAYS.temps_pennylane ? "" : `<tr><td colspan="8"><select id="ajd"><option value="">+ Ajouter un dossier à la semaine…</option>${vivants("dossiers").filter(d => d.actif !== false && !lignes.includes(d)).sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}">${esc(d.nom)}</option>`).join("")}</select></td></tr>`}
   </tbody><tfoot><tr><td>Total du jour</td>${jours.map(j => `<td class="num">${hfr(totJour(j))}</td>`).join("")}<td class="num">${hfr(total)}</td></tr></tfoot></table>
-  <p class="note">Saisissez les heures en décimal (1,5 = 1 h 30). Pour préciser l'activité ou un temps non facturable, utilisez « Saisie des temps » : les deux écrans se complètent.</p>`);
+  ${PAYS.temps_pennylane ? `<p class="note">Les temps, les honoraires et les coûts horaires viennent de <b>Pennylane</b> (synchronisation de la nuit) : saisissez-les dans Pennylane uniquement.</p>` : `<p class="note">Saisissez les heures en décimal (1,5 = 1 h 30). Pour préciser l'activité ou un temps non facturable, utilisez « Saisie des temps » : les deux écrans se complètent.</p>`}`);
   $("#sc").onchange = () => { sessionStorage.setItem("semaine-collab", $("#sc").value); afficher(); };
-  $("#ajd").onchange = () => { if (!$("#ajd").value) return; sessionStorage.setItem("semaine-lignes", JSON.stringify([...extra, $("#ajd").value])); afficher(); };
+  if ($("#ajd")) $("#ajd").onchange = () => { if (!$("#ajd").value) return; sessionStorage.setItem("semaine-lignes", JSON.stringify([...extra, $("#ajd").value])); afficher(); };
   document.querySelectorAll("[data-d]").forEach(el => el.onchange = () => {
     const did = el.dataset.d, j = el.dataset.j, voulu = Math.max(0, Number(String(el.value).replace(",", "."))||0);
     const id = `semaine|${cid}|${did}|${j}`, autres = tps.filter(x => x.dossier_id === did && x.date === j && x.id !== id).reduce((s,x) => s + (Number(x.heures)||0), 0);
@@ -623,6 +652,7 @@ function honoraires(){
   <h2>Dernières factures</h2>${l.length ? `<table><thead><tr><th>Date</th><th>Dossier</th><th>N°</th><th class="num">Montant HT</th><th></th></tr></thead><tbody>
   ${l.map(x => `<tr><td>${dfr(x.date)}</td><td>${esc((parId("dossiers", x.dossier_id)||{}).nom)}</td><td>${esc(x.numero)}</td><td class="num">${fcfa(x.montant)}</td>
   <td><button class="sec" data-sup="${x.id}">Supprimer</button></td></tr>`).join("")}</tbody></table>` : `<div class="vide">Aucune facture.</div>`}`);
+  if (PAYS.temps_pennylane) { $("#f").outerHTML = `<p class="note">Les temps, les honoraires et les coûts horaires viennent de <b>Pennylane</b> (synchronisation de la nuit) : saisissez-les dans Pennylane uniquement.</p>`; document.querySelectorAll("[data-sup]").forEach(b => b.remove()); return; }
   if (!vivants("dossiers").length) $("#f").innerHTML = `<div class="vide plein">Ajoutez d'abord des dossiers.</div>`;
   else $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target);
     const x = {id: uid(), date: f.get("date"), dossier_id: f.get("dossier_id"), numero: f.get("numero").trim(), montant: Number(f.get("montant"))};

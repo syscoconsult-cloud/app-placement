@@ -20,7 +20,7 @@ const REF = {
   "FR-DEPOT":       {lib:"Dépôt des comptes au greffe", cat:"Juridique", portail:GREFFE},
 };
 const PAYS = {
-  cle: "echeances-france", titre: "Échéances France", drapeau: "🇫🇷", monnaie: "€", pennylane: true,
+  cle: "echeances-france", titre: "Échéances France", drapeau: "🇫🇷", monnaie: "€", pennylane: true, temps_pennylane: true,
   dossier_conseille: "ECHEANCES FISCALES FRANCE",
   formulaire: {formes: ["SAS","SASU","SARL","EURL","SCI","EI","SA","SNC","Association"], identifiant: "SIREN",
     regimes_imposition: ["IS","IR"], regimes_tva: ["Mensuel (CA3)","Trimestriel (CA3)","Simplifié (CA12)","Franchise en base"], jour_tva_defaut: 19, jour_tva_modifiable: true,
