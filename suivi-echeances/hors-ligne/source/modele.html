@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>@@TITRE@@</title>
+<style>
+:root{--bleu:#1f3864;--bleu2:#2e5597;--fond:#f4f6f9;--carte:#fff;--trait:#e2e6ec;--texte:#1d2330;--gris:#6b7280;
+--rouge:#c0392b;--rougef:#fdecea;--orange:#b9770e;--orangef:#fef5e7;--vert:#1e8449;--vertf:#e9f7ef;--grisf:#f1f3f5}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--fond);color:var(--texte)}
+header{background:var(--bleu);color:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;padding:10px 20px}
+header b{font-size:17px;margin-right:8px}header nav{display:flex;flex-wrap:wrap;gap:4px}
+header nav a{color:#dfe7f5;text-decoration:none;padding:6px 10px;border-radius:6px}header nav a.actif,header nav a:hover{background:rgba(255,255,255,.15);color:#fff}
+header .droite{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:13px}
+header select{font-size:13px;padding:3px 6px;border-radius:5px;border:0}
+main{max-width:1200px;margin:0 auto;padding:20px}
+h1{font-size:24px;margin:6px 0 16px}h2{font-size:18px;margin:24px 0 10px}
+.cartes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:8px}
+.carte{background:var(--carte);border:1px solid var(--trait);border-radius:10px;padding:14px 16px}
+.carte .n{font-size:30px;font-weight:700}.carte .l{color:var(--gris);font-size:13px}
+.n.r{color:var(--rouge)}.n.o{color:var(--orange)}.n.v{color:var(--vert)}
+table{width:100%;border-collapse:collapse;background:var(--carte);border:1px solid var(--trait);border-radius:10px;overflow:hidden}
+th{background:#eef1f6;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#4b5563;padding:9px 10px}
+td{padding:8px 10px;border-top:1px solid var(--trait);vertical-align:top}
+tr.retard td{background:#fff8f7}
+.badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.b-retard{background:var(--rougef);color:var(--rouge)}.b-proche{background:var(--orangef);color:var(--orange)}
+.b-venir{background:var(--grisf);color:var(--gris)}.b-fait{background:var(--vertf);color:var(--vert)}
+.cat{font-size:11px;background:#e8eef9;color:var(--bleu2);padding:1px 6px;border-radius:4px;margin-right:4px}
+button,.btn{font:inherit;font-size:14px;background:var(--bleu);color:#fff;border:0;border-radius:6px;padding:7px 13px;cursor:pointer;text-decoration:none;display:inline-block}
+button.sec,.btn.sec{background:#fff;color:var(--bleu);border:1px solid #c7d2e4}button.danger{background:var(--rouge)}
+button:disabled{opacity:.5;cursor:default}
+input,select,textarea{font:inherit;font-size:14px;padding:6px 8px;border:1px solid #cfd6e1;border-radius:6px;background:#fff;max-width:100%}
+textarea{width:100%;min-height:60px}
+.form{background:var(--carte);border:1px solid var(--trait);border-radius:10px;padding:16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px 16px}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#374151}.form label.case{flex-direction:row;align-items:center;gap:8px}
+.form .plein{grid-column:1/-1}
+.barre{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.filtres{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.vide{color:var(--gris);padding:14px;background:var(--carte);border:1px dashed var(--trait);border-radius:10px}
+.note{font-size:13px;color:var(--gris)}.ok{color:var(--vert)}.err{color:var(--rouge)}
+.accueil{max-width:640px;margin:40px auto;background:var(--carte);border:1px solid var(--trait);border-radius:12px;padding:28px}
+.accueil h1{margin-top:0}.accueil .barre{margin-top:18px}
+#etat{font-size:12px;opacity:.9}
+.statut select{min-width:110px}.statut input{width:150px;margin-top:4px}
+.num{text-align:right;white-space:nowrap}
+.grille input{width:62px;text-align:right;padding:4px 6px}.grille td,.grille th{white-space:nowrap}.grille tfoot td{font-weight:700;background:#f7f9fc}
+.jauge{display:inline-block;min-width:48px;text-align:right}.sous{color:var(--rouge);font-weight:600}.limite{color:var(--orange);font-weight:600}
+a{color:var(--bleu2)}
+@media print{header,.barre,.filtres,button{display:none!important}}
+</style>
+</head>
+<body>
+<header id="entete" hidden>
+  <b>@@DRAPEAU@@ @@TITRE@@</b>
+  <nav id="menu"></nav>
+  <div class="droite">
+    <label>Je suis : <select id="moi"></select></label>
+    <span id="etat"></span>
+  </div>
+</header>
+<main id="page"></main>
+
+<script>
+"use strict";
+/* ===================================================================== RÈGLES
+   Calendrier fiscal, social et juridique du pays (même référentiel que l'application web), défini dans PAYS ci-dessous.
+   Les dates tombant un samedi, un dimanche ou un jour férié sont reportées au jour ouvré suivant. */
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const D = (y,m,d) => new Date(Date.UTC(y,m-1,d));
+const iso = d => d.toISOString().slice(0,10);
+const deIso = s => { const [y,m,d] = s.split("-").map(Number); return D(y,m,d); };
+const plusJours = (d,n) => new Date(d.getTime() + n*864e5);
+const finMois = (y,m) => D(y, m+1, 0) /* m sur 1..12 : jour 0 du mois suivant */;
+const finDeMois = d => finMois(d.getUTCFullYear(), d.getUTCMonth()+1);
+function ajouterMois(d, n){ const t = d.getUTCMonth()+n; const y = d.getUTCFullYear()+Math.floor(t/12), m = ((t%12)+12)%12+1;
+  return D(y, m, Math.min(d.getUTCDate(), finMois(y,m).getUTCDate())); }
+function paques(a){ const b=Math.floor(a/100),c=a%100,g=a%19,dd=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),h=Math.floor((b-f+1)/3),
+  i=(19*g+b-dd-h+15)%30,k=Math.floor(c/4),l=c%4,mm=(32+2*e+2*k-i-l)%7,q=Math.floor((g+11*i+22*mm)/451);
+  return D(a, Math.floor((i+mm-7*q+114)/31), (i+mm-7*q+114)%31+1); }
+const cacheFeries = {};
+function feries(a){ if(!cacheFeries[a]){ const p = paques(a);
+  cacheFeries[a] = new Set([...FERIES_FIXES.map(([m,j])=>iso(D(a,m,j))),
+    iso(plusJours(p,1)), iso(plusJours(p,39)), iso(plusJours(p,50))]); } return cacheFeries[a]; }
+function jourOuvre(d){ while([0,6].includes(d.getUTCDay()) || feries(d.getUTCFullYear()).has(iso(d))) d = plusJours(d,1); return d; }
+
+/*@@REGLES@@*/
+
+/* ----- Mission et conformité (communes aux deux pays) ----- */
+const REF_MISSION = {
+  "MISSION-LDM":      {lib:"Lettre de mission — signature", cat:"Mission", portail:null},
+  "MISSION-ACCEPT":   {lib:"Acceptation de la mission — questionnaire et décision", cat:"Mission", portail:null},
+  "LAB-REVUE":        {lib:"LAB — revue du dossier client (identification, bénéficiaires effectifs, vigilance)", cat:"LAB", portail:null},
+  "LAB-CONSTITUTION": {lib:"LAB — constitution du dossier client (identification, bénéficiaires effectifs, niveau de vigilance)", cat:"LAB", portail:null},
+  "MISSION-MAINTIEN": {lib:"Maintien de la mission — revue annuelle (indépendance, risques, honoraires)", cat:"Mission", portail:null},
+  "MISSION-CR":       {lib:"Compte rendu de mission de l'expert-comptable et lettre d'affirmation", cat:"Mission", portail:null},
+};
+const refDe = code => REF[code] || REF_MISSION[code];
+const LAB_ANNEES_DEFAUT = {"Simplifiée": 3, "Standard": 2, "Renforcée": 1};
+const labAnnees = v => Number(((data && data.parametres && data.parametres.lab_annees) || {})[v]) || LAB_ANNEES_DEFAUT[v] || 2;
+function prochaineRevueLab(d){ return d.lab_derniere_revue ? iso(ajouterMois(deIso(d.lab_derniere_revue), 12 * labAnnees(d.lab_vigilance || "Standard"))) : ""; }
+const REGLES_MISSION = () => [
+  ["Lettre de mission, acceptation de la mission", "à formaliser dans le mois suivant l'entrée du dossier"],
+  ["LAB — revue du dossier client", `tous les ${labAnnees("Renforcée")} an(s) en vigilance renforcée, ${labAnnees("Standard")} ans en standard, ${labAnnees("Simplifiée")} ans en simplifiée (modifiable ci-dessus)`],
+  ["Maintien de la mission", "1 mois après la clôture de l'exercice"],
+  ["Compte rendu de mission et lettre d'affirmation", "avec les comptes annuels : 3 mois après la clôture"]];
+/* Échéances de mission liées aux exercices (fenêtre glissante). */
+function genererMission(dos, du, au){
+  const out = [], c0 = deIso(dos.cloture || `${du.getUTCFullYear()}-12-31`), finM = iso(c0) === iso(finDeMois(c0));
+  for (const k of [-1,0,1]) { let c = ajouterMois(c0, 12*k); if (finM) c = finDeMois(c);
+    const ex = `exercice clos le ${iso(c).split("-").reverse().join("/")}`;
+    for (const [code, d] of [["MISSION-MAINTIEN", finDeMois(ajouterMois(c,1))], ["MISSION-CR", finDeMois(ajouterMois(c,3))]]) {
+      const j = jourOuvre(d); if (j >= du && j <= au) out.push({code, date_limite: iso(j), periode: ex}); } }
+  return out;
+}
+/* Échéances ponctuelles : lettre de mission, acceptation, LAB. Hors fenêtre : elles restent visibles tant qu'elles ne sont pas faites. */
+function genererPonctuelles(dos){
+  const entree = iso(plusJours(deIso(dos.suivi_depuis || iso(aujourdhui())), 30)), out = [];
+  out.push({code: "MISSION-LDM", date_limite: entree, periode: "mission", fait: dos.ldm_statut === "Signée", le: dos.ldm_date});
+  out.push({code: "MISSION-ACCEPT", date_limite: entree, periode: "mission", fait: !!dos.acceptation_date, le: dos.acceptation_date});
+  if (!dos.lab_derniere_revue) out.push({code: "LAB-CONSTITUTION", date_limite: entree, periode: "dossier client", fait: false});
+  else { const p = prochaineRevueLab(dos); out.push({code: "LAB-REVUE", date_limite: p, periode: `revue avant le ${dfr(p)}`, fait: false}); }
+  return out;
+}
+
+/* ===================================================================== DONNÉES */
+const CLE = PAYS.cle;
+const VIDE = () => ({format:CLE, version:1, parametres:{cabinet:"Sysco Consulting International", copie:""},
+  collaborateurs:[], dossiers:[], echeances:[], temps:[], honoraires:[]});
+const COLLECTIONS = ["collaborateurs","dossiers","echeances","temps","honoraires"];
+const ACTIVITES = ["Saisie comptable","Révision et bilan","Déclarations fiscales","Paie et social","Juridique","Conseil","Rendez-vous client","Administratif (non facturable)"];
+let data = VIDE(), fichier = null, modeLocal = false, sale = false, minuterie = null, derniereLecture = 0;
+const aujourdhui = () => { const n = new Date(); return D(n.getFullYear(), n.getMonth()+1, n.getDate()); };
+const maintenant = () => new Date().toISOString();
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)+Math.random().toString(36).slice(2));
+const vivants = col => data[col].filter(x => !x.supprime);
+const parId = (col, id) => data[col].find(x => x.id === id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fcfa = v => (Math.round(Number(v)||0)).toLocaleString("fr-FR") + " " + PAYS.monnaie;
+const dfr = s => s ? s.split("-").reverse().join("/") : "";
+
+const lundi = d => plusJours(d, -((d.getUTCDay()+6)%7));
+const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+const hfr = v => (Math.round((Number(v)||0)*100)/100).toLocaleString("fr-FR");
+const heuresAttendues = c => Number(c && c.heures_semaine) || 40;
+function heuresSemaine(cid, debut){ const fin = iso(plusJours(debut, 6)), d0 = iso(debut);
+  return vivants("temps").filter(x => x.collaborateur_id === cid && x.date >= d0 && x.date <= fin).reduce((s,x) => s + (Number(x.heures)||0), 0); }
+/* Budget d'heures : temps passé sur l'année civile en cours rapporté au budget annuel du dossier. */
+function budget(d){ const a = String(aujourdhui().getUTCFullYear()), b = Number(d.budget_heures)||0;
+  const h = vivants("temps").filter(x => x.dossier_id === d.id && (x.date||"").startsWith(a)).reduce((s,x) => s + (Number(x.heures)||0), 0);
+  return {h, b, pct: b ? h / b : null, niveau: !b ? "" : h > b ? "depasse" : h >= 0.8*b ? "proche" : "ok"}; }
+const BADGE_BUDGET = {depasse:'<span class="badge b-retard">Budget dépassé</span>', proche:'<span class="badge b-proche">Budget ≥ 80 %</span>', ok:"", "":""};
+
+function toucher(obj){ obj.maj = maintenant(); sale = true; programmerEnregistrement(); }
+
+/* Fusion de deux versions du fichier : pour chaque fiche, la plus récente l'emporte.
+   Permet à plusieurs personnes d'utiliser le même fichier (une suppression est une fiche « supprime »). */
+function fusionner(a, b){
+  const r = {...a, ...b, parametres: (b.parametres_maj||"") > (a.parametres_maj||"") ? b.parametres : a.parametres,
+             parametres_maj: [a.parametres_maj||"", b.parametres_maj||""].sort()[1], pennylane_le: [a.pennylane_le||"", b.pennylane_le||""].sort()[1]};
+  for (const col of COLLECTIONS) {
+    const m = new Map();
+    for (const x of [...(a[col]||[]), ...(b[col]||[])]) { const y = m.get(x.id); if (!y || (x.maj||"") >= (y.maj||"")) m.set(x.id, x); }
+    r[col] = [...m.values()];
+  }
+  return r;
+}
+
+/* Copie dénormalisée pour les automatisations (Make, Power Automate) : chaque échéance porte
+   le nom du dossier, le responsable et son e-mail, et son niveau d'alerte du jour d'enregistrement. */
+function enrichir(){
+  const t = iso(aujourdhui());
+  for (const e of data.echeances) {
+    const d = parId("dossiers", e.dossier_id) || {}, c = parId("collaborateurs", d.collaborateur_id) || {};
+    e.dossier_nom = d.nom || ""; e.responsable = c.nom || ""; e.responsable_email = c.email || "";
+    e.dossier_actif = !d.supprime && d.actif !== false;
+  }
+  /* Heures saisies par collaborateur sur les 8 dernières semaines (contrôle de saisie, rappel du lundi). */
+  const l0 = lundi(aujourdhui());
+  data.resume_temps = [];
+  for (const c of vivants("collaborateurs")) for (let k = 0; k < 8; k++) { const deb = plusJours(l0, -7*k);
+    data.resume_temps.push({collaborateur: c.nom, email: c.email || "", semaine_debut: iso(deb), heures: Math.round(heuresSemaine(c.id, deb)*100)/100,
+      attendues: heuresAttendues(c), complet: heuresSemaine(c.id, deb) >= 0.9*heuresAttendues(c)}); }
+  data.enregistre_le = maintenant(); data.enregistre_le_jour = t;
+}
+
+/* ----- Stockage : un dossier partagé (Edge, Chrome) ou le navigateur (autres) -----
+   Le dossier choisi contient le fichier de données (créé au besoin) et, en France, la synchronisation Pennylane
+   déposée chaque nuit par la tâche programmée Claude. */
+const IDB = { ouvrir: () => new Promise((ok, ko) => { const r = indexedDB.open(CLE, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("k"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }),
+  async lire(cle){ const db = await this.ouvrir(); return new Promise(ok => { const q = db.transaction("k").objectStore("k").get(cle); q.onsuccess = () => ok(q.result); q.onerror = () => ok(null); }); },
+  async ecrire(cle, v){ const db = await this.ouvrir(); return new Promise(ok => { const t = db.transaction("k","readwrite"); t.objectStore("k").put(v, cle); t.oncomplete = ok; t.onerror = ok; }); } };
+const fichierPossible = "showDirectoryPicker" in window;
+const NOM_DONNEES = `${CLE}-donnees.json`, NOM_SYNCHRO = "pennylane-synchro.json";
+let dossierPartage = null, derniereSynchro = 0;
+
+async function lireFichier(){ const f = await fichier.getFile(); derniereLecture = f.lastModified; const txt = await f.text();
+  const v = txt.trim() ? JSON.parse(txt) : VIDE(); if (v.format !== CLE) throw new Error(`Ce fichier n'est pas un fichier de données ${PAYS.titre}.`); return v; }
+
+async function enregistrer(){
+  if (!sale) return; sale = false; enrichir(); etat("Enregistrement…");
+  try {
+    if (modeLocal) { localStorage.setItem(CLE, JSON.stringify(data)); etat("Enregistré dans ce navigateur", "ok"); return; }
+    const f = await fichier.getFile();
+    if (f.lastModified > derniereLecture) data = fusionner(await lireFichier(), data); // quelqu'un d'autre a enregistré entre-temps
+    const w = await fichier.createWritable(); await w.write(JSON.stringify(data, null, 1)); await w.close();
+    derniereLecture = (await fichier.getFile()).lastModified;
+    etat(`Enregistré à ${new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}`, "ok");
+  } catch (e) { sale = true; etat("Échec de l'enregistrement : " + e.message, "err"); }
+}
+function programmerEnregistrement(){ clearTimeout(minuterie); minuterie = setTimeout(enregistrer, 600); }
+window.addEventListener("beforeunload", e => { if (sale) { enregistrer(); e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("focus", async () => { // reprend les modifications des collègues et la synchronisation de la nuit
+  if (!fichier || modeLocal) return;
+  try { const f = await fichier.getFile(); if (f.lastModified > derniereLecture) { data = fusionner(data, await lireFichier()); afficher(); etat("Mis à jour avec les modifications des collègues", "ok"); }
+    if (await lireSynchro()) afficher(); } catch (e) {}
+});
+function etat(t, cls){ const e = document.getElementById("etat"); e.textContent = t; e.className = cls || ""; }
+
+/* Synchronisation Pennylane (France) : fichier déposé dans le dossier par la tâche Claude de la nuit. */
+async function lireSynchro(){
+  if (!PAYS.pennylane || !dossierPartage) return false;
+  let h; try { h = await dossierPartage.getFileHandle(NOM_SYNCHRO); } catch (e) { return false; }
+  const f = await h.getFile(); if (f.lastModified <= derniereSynchro) return false; derniereSynchro = f.lastModified;
+  try { const r = importerPennylane(JSON.parse(await f.text())); if (r) etat(r, "ok"); return true; } catch (e) { etat("Synchronisation Pennylane illisible : " + e.message, "err"); return false; }
+}
+
+async function demarrerAvec(contenu){
+  data = fusionner(VIDE(), contenu); recalculerTout(false); await lireSynchro(); document.getElementById("entete").hidden = false;
+  remplirMoi(); if (!location.hash) location.hash = "#tableau"; afficher();
+  etat(modeLocal ? "Données dans ce navigateur" : `Dossier : ${dossierPartage.name}`);
+}
+async function ouvrirDossier(h){
+  dossierPartage = h; fichier = await h.getFileHandle(NOM_DONNEES, {create: true});
+  await IDB.ecrire("dossier", h); await demarrerAvec(await lireFichier());
+}
+async function choisirDossier(){ try { await ouvrirDossier(await window.showDirectoryPicker({mode: "readwrite", id: CLE})); } catch (e) { if (e.name !== "AbortError") alert(e.message); } }
+async function reprendreDossier(h){ if ((await h.requestPermission({mode:"readwrite"})) !== "granted") return; try { await ouvrirDossier(h); } catch (e) { alert(e.message); } }
+function demarrerLocal(){ modeLocal = true; let v = VIDE(); try { v = JSON.parse(localStorage.getItem(CLE)) || v; } catch (e) {} demarrerAvec(v); }
+
+async function accueil(){
+  document.title = PAYS.titre;
+  const h = fichierPossible ? await IDB.lire("dossier").catch(()=>null) : null;
+  document.getElementById("page").innerHTML = `<div class="accueil"><h1>${PAYS.drapeau} ${PAYS.titre}</h1>
+  <p>Suivi des échéances fiscales, sociales et juridiques, de la conformité des missions (LAB, acceptation et maintien, compte rendu, AGO), des temps et de la rentabilité.</p>
+  ${fichierPossible ? `<p>Choisissez le <b>dossier partagé</b> de l'outil (OneDrive ou SharePoint synchronisé, par exemple
+  <b>${PAYS.dossier_conseille}</b>). Les données y sont enregistrées dans <b>${NOM_DONNEES}</b>${PAYS.pennylane ? `, et la synchronisation Pennylane de la nuit y est lue (<b>${NOM_SYNCHRO}</b>)` : ""}.</p>
+  <div class="barre">${h ? `<button id="reprendre">Reprendre le dossier « ${esc(h.name)} »</button>` : ""}
+  <button class="${h ? "sec" : ""}" id="choisir">Choisir le dossier partagé</button></div>`
+  : `<p class="err">Ce navigateur ne permet pas de travailler dans un dossier partagé. Ouvrez cette page avec
+  <b>Microsoft Edge</b> ou <b>Google Chrome</b>. En attendant, les données restent dans ce navigateur (pensez à les exporter).</p>
+  <div class="barre"><button id="local">Continuer dans ce navigateur</button></div>`}
+  <p class="note">Cette page n'envoie aucune donnée sur Internet.</p></div>`;
+  const on = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
+  on("reprendre", () => reprendreDossier(h)); on("choisir", choisirDossier); on("local", demarrerLocal);
+}
+
+/* ===================================================================== PENNYLANE (France)
+   Fichier « pennylane-synchro.json » écrit chaque nuit par la tâche Claude (connecteurs Pennylane et Microsoft 365) :
+   {format:"pennylane-synchro", genere_le, collaborateurs:[{nom,email}],
+    dossiers:[{pennylane_id, nom, forme, siren, cloture, regime_imposition, regime_tva, jour_tva, salaries, effectif, collaborateur_email,
+               lettre_mission:{statut:"signee"|"envoyee"|"absente", date}}],
+    declarations:[{pennylane_id, type:"TVA"|"LIASSE", periode_fin, statut:"accepted"|"submitted"|"ready"|"rejected"|"draft", depose_le}]} */
+const LIBELLES_PL = {accepted:"acceptée", accepted_and_paid:"acceptée et payée", submitted:"déposée, accusé en attente", ready:"prête, non envoyée", rejected:"rejetée", draft:"brouillon"};
+function importerPennylane(s){
+  if (!s || s.format !== "pennylane-synchro") throw new Error("format inconnu");
+  if (data.pennylane_le && s.genere_le <= data.pennylane_le) return "";
+  const n = {dossiers: 0, nouveaux: 0, statuts: 0};
+  for (const c of s.collaborateurs || []) { if (!c.email) continue; const em = c.email.toLowerCase();
+    let x = vivants("collaborateurs").find(y => (y.email||"").toLowerCase() === em);
+    if (!x) { x = {id: "pl-" + em, nom: c.nom || em, email: em, taux: 0, heures_semaine: 35}; data.collaborateurs.push(x); toucher(x); } }
+  const LDM = {signee: "Signée", envoyee: "Envoyée, non signée", absente: "À établir"};
+  for (const p of s.dossiers || []) {
+    let d = data.dossiers.find(x => x.pennylane_id === String(p.pennylane_id));
+    if (!d) { d = {id: "pl-" + p.pennylane_id, pennylane_id: String(p.pennylane_id), suivi_depuis: iso(aujourdhui()), actif: true, depot_comptes: true, lab_vigilance: "Standard", ldm_statut: "À établir"}; data.dossiers.push(d); n.nouveaux++; }
+    if (d.supprime) continue;
+    const coll = p.collaborateur_email && vivants("collaborateurs").find(y => (y.email||"").toLowerCase() === p.collaborateur_email.toLowerCase());
+    const maj = {nom: p.nom, forme: p.forme, ifu: p.siren, cloture: p.cloture, regime_imposition: p.regime_imposition, regime_tva: p.regime_tva,
+      jour_tva: p.jour_tva || d.jour_tva || PAYS.formulaire.jour_tva_defaut, collaborateur_id: coll ? coll.id : d.collaborateur_id};
+    if (p.salaries !== undefined) maj.salaries = !!p.salaries; if (p.effectif !== undefined && p.effectif !== null) maj.effectif = p.effectif;
+    if (p.lettre_mission && LDM[p.lettre_mission.statut]) { maj.ldm_statut = LDM[p.lettre_mission.statut]; if (p.lettre_mission.date) maj.ldm_date = p.lettre_mission.date; }
+    let modifie = false; for (const [k, v] of Object.entries(maj)) if (v !== undefined && v !== null && v !== "" && d[k] !== v) { d[k] = v; modifie = true; }
+    if (modifie) { toucher(d); n.dossiers++; } recalculer(d);
+  }
+  for (const r of s.declarations || []) {
+    const d = data.dossiers.find(x => x.pennylane_id === String(r.pennylane_id)); if (!d || !r.periode_fin) continue;
+    const e = vivants("echeances").find(x => x.dossier_id === d.id && PAYS.correspond(x, r)); if (!e) continue;
+    const lib = LIBELLES_PL[r.statut] || r.statut, avant = JSON.stringify([e.statut, e.anomalie, e.pennylane]);
+    e.pennylane = lib;
+    if (["accepted","accepted_and_paid"].includes(r.statut)) { if (e.statut !== "Fait") { e.statut = "Fait"; e.date_realisation = (r.depose_le || iso(aujourdhui())).slice(0,10); } e.anomalie = ""; }
+    else if (r.statut === "submitted") { if (e.statut === "À faire") e.statut = "En cours"; e.anomalie = ""; }
+    else if (r.statut === "ready") e.anomalie = "Prête dans Pennylane mais pas envoyée";
+    else if (r.statut === "rejected") { e.anomalie = "Rejetée par l'administration"; if (e.statut === "Fait") e.statut = "En cours"; }
+    if (JSON.stringify([e.statut, e.anomalie, e.pennylane]) !== avant) { toucher(e); n.statuts++; }
+  }
+  data.pennylane_le = s.genere_le; sale = true; programmerEnregistrement();
+  return `Pennylane (${new Date(s.genere_le).toLocaleString("fr-FR")}) : ${n.nouveaux} nouveau(x) dossier(s), ${n.dossiers} mis à jour, ${n.statuts} statut(s) de déclaration`;
+}
+
+/* ===================================================================== MÉTIER */
+function fenetre(dos){ const t = aujourdhui(); let du = ajouterMois(t, -1);
+  if (dos.suivi_depuis && deIso(dos.suivi_depuis) > du) du = deIso(dos.suivi_depuis); return [du, ajouterMois(t, 12)]; }
+
+/* Crée les échéances manquantes sur 12 mois glissants. Les échéances faites ou commentées ne sont jamais modifiées ;
+   celles qui ne correspondent plus au profil du dossier sont retirées si elles sont encore « À faire » sans commentaire. */
+function recalculer(dos){
+  const [du, au] = fenetre(dos), attendues = new Map(), actif = !dos.supprime && dos.actif !== false;
+  if (actif) for (const l of [...generer(dos, du, au), ...genererMission(dos, du, au)]) attendues.set(`${dos.id}|${l.code}|${l.periode}`, l);
+  const ponct = new Map(actif ? genererPonctuelles(dos).map(l => [`${dos.id}|${l.code}|${l.periode}`, l]) : []);
+  let change = false; const maj = e => { e.maj = maintenant(); change = true; };
+  for (const e of data.echeances.filter(e => e.dossier_id === dos.id && !e.supprime)) {
+    const l = attendues.get(e.id) || ponct.get(e.id);
+    if (l) {
+      if (e.date_limite !== l.date_limite && e.statut !== "Fait") { e.date_limite = l.date_limite; maj(e); }
+      if (l.fait && e.statut !== "Fait") { e.statut = "Fait"; e.date_realisation = l.le || iso(aujourdhui()); maj(e); }
+      if (l.fait === false && e.statut === "Fait" && e.auto) { e.statut = "À faire"; e.date_realisation = ""; maj(e); }
+      attendues.delete(e.id); ponct.delete(e.id);
+    } else if (["LAB-REVUE","LAB-CONSTITUTION"].includes(e.code) && e.statut !== "Fait") { // revue faite : la date de dernière revue a avancé
+      e.statut = "Fait"; e.date_realisation = dos.lab_derniere_revue || iso(aujourdhui()); maj(e);
+    } else if (e.statut === "À faire" && !e.commentaire && e.date_limite >= iso(du) && !e.pennylane) { e.supprime = true; maj(e); }
+  }
+  for (const [id, l] of [...attendues, ...ponct]) { const r = refDe(l.code);
+    data.echeances.push({id, dossier_id: dos.id, code: l.code, libelle: `${r.lib} — ${l.periode}`, categorie: r.cat, portail: r.portail,
+      date_limite: l.date_limite, periode: l.periode, statut: l.fait ? "Fait" : "À faire", auto: l.fait !== undefined,
+      commentaire: "", date_realisation: l.fait ? (l.le || iso(aujourdhui())) : "", maj: maintenant()});
+    change = true; }
+  return change;
+}
+function recalculerTout(sauver = true){ let c = false; for (const d of vivants("dossiers")) c = recalculer(d) || c; if (c && sauver) { sale = true; programmerEnregistrement(); } else if (c) { sale = true; programmerEnregistrement(); } }
+
+function niveau(e){ if (e.statut === "Fait") return "fait"; if (e.anomalie) return "anomalie"; const t = iso(aujourdhui());
+  if (e.date_limite < t) return "retard"; if (e.date_limite <= iso(plusJours(aujourdhui(), 7))) return "proche"; return "venir"; }
+const BADGE = {anomalie:'<span class="badge b-retard">⚠ Anomalie</span>', retard:'<span class="badge b-retard">● En retard</span>', proche:'<span class="badge b-proche">● Sous 7 jours</span>',
+  venir:'<span class="badge b-venir">● À venir</span>', fait:'<span class="badge b-fait">✓ Fait</span>'};
+function echeancesVisibles(){ return vivants("echeances").filter(e => { const d = parId("dossiers", e.dossier_id); return d && !d.supprime && d.actif !== false; }); }
+const moi = () => localStorage.getItem(CLE + "-moi") || "";
+function remplirMoi(){ const s = document.getElementById("moi");
+  s.innerHTML = `<option value="">Tout le cabinet</option>` + vivants("collaborateurs").map(c => `<option value="${c.id}">${esc(c.nom)}</option>`).join("");
+  s.value = moi(); s.onchange = () => { localStorage.setItem(CLE + "-moi", s.value); afficher(); }; }
+
+/* ===================================================================== ÉCRANS */
+const PAGES = [["tableau","Tableau de bord"],["echeances","Échéances"],["dossiers","Dossiers"],["semaine","Ma semaine"],["temps","Saisie des temps"],["suivi","Suivi des temps"],["conformite","Conformité"],
+  ["honoraires","Honoraires"],["rentabilite","Rentabilité"],["collaborateurs","Collaborateurs"],["parametres","Paramètres"]];
+window.addEventListener("hashchange", () => afficher());
+function afficher(){
+  const [page, arg] = location.hash.slice(1).split("/");
+  document.getElementById("menu").innerHTML = PAGES.map(([k,l]) => `<a href="#${k}" class="${page===k || (page==="dossier" && k==="dossiers") ? "actif":""}">${l}</a>`).join("");
+  const f = {tableau, echeances, dossiers, dossier: () => fiche(arg), semaine: () => semaine(arg), temps, suivi, conformite, honoraires, rentabilite, collaborateurs, parametres}[page] || tableau;
+  document.getElementById("page").innerHTML = ""; f();
+}
+const $ = s => document.querySelector(s);
+const ecrire = html => { $("#page").innerHTML = html; };
+
+function ligneEcheance(e, avecDossier = true){
+  const d = parId("dossiers", e.dossier_id) || {}, c = parId("collaborateurs", d.collaborateur_id) || {}, n = niveau(e);
+  return `<tr class="${["retard","anomalie"].includes(n)?"retard":""}"><td>${dfr(e.date_limite)}</td><td>${BADGE[n]}${e.anomalie ? `<div class="note err">${esc(e.anomalie)}</div>` : ""}${e.pennylane && !e.anomalie ? `<div class="note">Pennylane : ${esc(e.pennylane)}</div>` : ""}</td>
+  ${avecDossier ? `<td><a href="#dossier/${d.id}">${esc(d.nom)}</a></td>` : ""}
+  <td><span class="cat">${esc(e.categorie)}</span>${esc(e.libelle)}${e.portail ? ` <a href="${e.portail}" target="_blank" rel="noopener">portail ↗</a>` : ""}</td>
+  <td>${esc(c.nom || "—")}</td>
+  <td class="statut"><select data-e="${e.id}" data-champ="statut">${["À faire","En cours","Fait"].map(s => `<option ${s===e.statut?"selected":""}>${s}</option>`).join("")}</select>
+  <br><input data-e="${e.id}" data-champ="commentaire" placeholder="Commentaire" value="${esc(e.commentaire)}">
+  ${e.statut === "Fait" && e.date_realisation ? `<div class="note">fait le ${dfr(e.date_realisation)}</div>` : ""}</td></tr>`;
+}
+function brancherStatuts(){
+  document.querySelectorAll("[data-e]").forEach(el => el.onchange = () => {
+    const e = parId("echeances", el.dataset.e); e[el.dataset.champ] = el.value;
+    if (el.dataset.champ === "statut") e.date_realisation = el.value === "Fait" ? iso(aujourdhui()) : "";
+    toucher(e); if (el.dataset.champ === "statut") afficher();
+  });
+}
+const tableEcheances = (liste, avecDossier = true) => liste.length ? `<table><thead><tr><th>Date limite</th><th>Alerte</th>${avecDossier?"<th>Dossier</th>":""}<th>Échéance</th><th>Responsable</th><th>Statut</th></tr></thead>
+  <tbody>${liste.map(e => ligneEcheance(e, avecDossier)).join("")}</tbody></table>` : `<div class="vide">Rien à afficher.</div>`;
+function filtreMoi(liste){ const m = moi(); return m ? liste.filter(e => (parId("dossiers", e.dossier_id)||{}).collaborateur_id === m) : liste; }
+
+function tableau(){
+  const t = aujourdhui(), toutes = filtreMoi(echeancesVisibles()), ms = iso(t).slice(0,7);
+  const retard = toutes.filter(e => ["retard","anomalie"].includes(niveau(e))), proche = toutes.filter(e => niveau(e) === "proche");
+  const duMois = toutes.filter(e => e.date_limite.startsWith(ms)), faitesMois = duMois.filter(e => e.statut === "Fait");
+  const a30 = toutes.filter(e => e.statut !== "Fait" && (e.date_limite <= iso(plusJours(t, 30)) || e.anomalie)).sort((a,b) => a.date_limite.localeCompare(b.date_limite));
+  if (!vivants("dossiers").length) return ecrire(`<h1>Tableau de bord</h1><div class="vide">Commencez par ajouter vos <a href="#collaborateurs">collaborateurs</a>, puis vos <a href="#dossiers">dossiers</a> : les échéances se créent automatiquement.</div>`);
+  ecrire(`<h1>Tableau de bord</h1>
+  <div class="cartes"><div class="carte"><div class="n r">${retard.length}</div><div class="l">En retard ou en anomalie</div></div>
+  <div class="carte"><div class="n o">${proche.length}</div><div class="l">À traiter sous 7 jours</div></div>
+  <div class="carte"><div class="n v">${faitesMois.length} / ${duMois.length}</div><div class="l">Échéances faites en ${MOIS[t.getUTCMonth()]} ${t.getUTCFullYear()}</div></div>
+  ${(() => { const sp = plusJours(lundi(t), -7), cs = vivants("collaborateurs").filter(c => !moi() || c.id === moi()), inc = cs.filter(c => heuresSemaine(c.id, sp) < 0.9*heuresAttendues(c));
+     return `<a class="carte" href="#suivi" style="text-decoration:none;color:inherit"><div class="n ${inc.length ? "r" : "v"}">${inc.length}</div><div class="l">Temps incomplets la semaine dernière${inc.length ? " : " + inc.map(c => esc(c.nom)).join(", ") : ""}</div></a>`; })()}
+  ${(() => { const ds = vivants("dossiers").filter(d => d.actif !== false && (!moi() || d.collaborateur_id === moi())).map(d => [d, budget(d)]).filter(([, b]) => b.niveau === "depasse" || b.niveau === "proche");
+     return `<a class="carte" href="#suivi" style="text-decoration:none;color:inherit"><div class="n ${ds.some(([, b]) => b.niveau === "depasse") ? "r" : ds.length ? "o" : "v"}">${ds.length}</div><div class="l">Dossiers à 80 % ou plus de leur budget d'heures</div></a>`; })()}</div>
+  <div class="barre"><button class="sec" id="mails">✉ Préparer les e-mails d'alerte</button><span class="note">Ouvre un e-mail prêt à envoyer pour chaque collaborateur concerné.</span></div>
+  <h2>À traiter dans les 30 prochains jours (et retards)</h2>${tableEcheances(a30)}`);
+  brancherStatuts(); $("#mails").onclick = preparerMails;
+}
+
+function preparerMails(){
+  const t = iso(aujourdhui()), lim = iso(plusJours(aujourdhui(), 7)), parC = new Map();
+  for (const e of echeancesVisibles()) { if (e.statut === "Fait" || (e.date_limite > lim && !e.anomalie)) continue;
+    const d = parId("dossiers", e.dossier_id), c = parId("collaborateurs", d.collaborateur_id); if (!c || !c.email) continue;
+    if (!parC.has(c.id)) parC.set(c.id, {c, l: []}); parC.get(c.id).l.push(e); }
+  if (!parC.size) return alert("Aucune échéance en retard ou à moins de 7 jours : rien à envoyer.");
+  const copie = data.parametres.copie ? `&cc=${encodeURIComponent(data.parametres.copie)}` : "";
+  const liens = [...parC.values()].map(({c, l}) => { l.sort((a,b) => a.date_limite.localeCompare(b.date_limite));
+    const r = l.filter(e => e.date_limite < t).length, p = l.length - r;
+    const corps = `Bonjour ${c.nom},\n\n` + (r ? `🔴 En retard (${r}) :\n` + l.filter(e => e.date_limite < t).map(e => `• ${dfr(e.date_limite)} · ${parId("dossiers", e.dossier_id).nom} · ${e.libelle} [${e.statut}]`).join("\n") + "\n\n" : "")
+      + (p ? `🟠 Dans les 7 jours (${p}) :\n` + l.filter(e => e.date_limite >= t).map(e => `• ${dfr(e.date_limite)} · ${parId("dossiers", e.dossier_id).nom} · ${e.libelle} [${e.statut}]`).join("\n") + "\n\n" : "")
+      + `Merci de mettre à jour les statuts dans l'outil ${PAYS.titre}.\n`;
+    return `<p><a class="btn" href="mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(`Échéances : ${r} en retard, ${p} sous 7 jours`)}${copie}&body=${encodeURIComponent(corps)}">✉ ${esc(c.nom)} — ${r} en retard, ${p} sous 7 jours</a></p>`; }).join("");
+  ecrire(`<h1>E-mails d'alerte</h1><p class="note">Cliquez sur chaque bouton : votre messagerie ouvre un e-mail prêt, vérifiez-le puis envoyez-le.</p>${liens}<p><a href="#tableau">← Retour</a></p>`);
+}
+
+function echeances(){
+  const p = new URLSearchParams(sessionStorage.getItem("filtres-ech") || "");
+  const coll = p.get("c") ?? moi(), st = p.get("s") || "nonfaites", mois = p.get("m") || "", dos = p.get("d") || "";
+  let l = echeancesVisibles();
+  if (coll) l = l.filter(e => (parId("dossiers", e.dossier_id)||{}).collaborateur_id === coll);
+  if (dos) l = l.filter(e => e.dossier_id === dos);
+  if (st === "nonfaites") l = l.filter(e => e.statut !== "Fait"); else if (st === "retard") l = l.filter(e => ["retard","anomalie"].includes(niveau(e))); else if (st !== "toutes") l = l.filter(e => e.statut === st);
+  if (mois) l = l.filter(e => e.date_limite.startsWith(mois));
+  l.sort((a,b) => a.date_limite.localeCompare(b.date_limite));
+  ecrire(`<h1>Échéances</h1><div class="filtres">
+  <select id="fc"><option value="">Tous les collaborateurs</option>${vivants("collaborateurs").map(c => `<option value="${c.id}" ${c.id===coll?"selected":""}>${esc(c.nom)}</option>`).join("")}</select>
+  <select id="fd"><option value="">Tous les dossiers</option>${vivants("dossiers").sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}" ${d.id===dos?"selected":""}>${esc(d.nom)}</option>`).join("")}</select>
+  <select id="fs">${[["nonfaites","Non faites"],["retard","En retard"],["À faire","À faire"],["En cours","En cours"],["Fait","Faites"],["toutes","Toutes"]].map(([v,t]) => `<option value="${v}" ${v===st?"selected":""}>${t}</option>`).join("")}</select>
+  <input type="month" id="fm" value="${mois}"> <span class="note">${l.length} échéance(s)</span></div>${tableEcheances(l)}`);
+  const maj = () => { sessionStorage.setItem("filtres-ech", new URLSearchParams({c:$("#fc").value, s:$("#fs").value, m:$("#fm").value, d:$("#fd").value}).toString()); afficher(); };
+  ["#fc","#fs","#fm","#fd"].forEach(s => $(s).onchange = maj); brancherStatuts();
+}
+
+function dossiers(){
+  const l = vivants("dossiers").sort((a,b) => a.nom.localeCompare(b.nom));
+  ecrire(`<h1>Dossiers</h1><div class="barre"><a class="btn" href="#dossier/nouveau">+ Nouveau dossier</a></div>
+  ${l.length ? `<table><thead><tr><th>Dossier</th><th>Forme</th><th>Clôture</th><th>TVA</th><th>Responsable</th><th class="num">Heures / budget</th><th class="num">En retard</th><th class="num">Sous 7 jours</th></tr></thead><tbody>
+  ${l.map(d => { const e = echeancesVisibles().filter(x => x.dossier_id === d.id), c = parId("collaborateurs", d.collaborateur_id) || {};
+    return `<tr><td><a href="#dossier/${d.id}">${esc(d.nom)}</a>${d.actif === false ? ' <span class="note">(inactif)</span>' : ""}</td><td>${esc(d.forme)}</td><td>${dfr(d.cloture)}</td>
+    <td>${esc(d.regime_tva)}</td><td>${esc(c.nom || "—")}</td><td class="num">${(b => b.b ? `${hfr(b.h)} / ${hfr(b.b)} h ${BADGE_BUDGET[b.niveau]}` : (b.h ? hfr(b.h) + " h" : ""))(budget(d))}</td><td class="num">${e.filter(x => ["retard","anomalie"].includes(niveau(x))).length || ""}</td><td class="num">${e.filter(x => niveau(x)==="proche").length || ""}</td></tr>`; }).join("")}
+  </tbody></table>` : `<div class="vide">Aucun dossier.</div>`}`);
+}
+
+const VIGILANCES = ["Simplifiée","Standard","Renforcée"];
+const STATUTS_LDM = ["À établir","Envoyée, non signée","Signée"];
+function fiche(id){
+  const F = PAYS.formulaire, nouveau = id === "nouveau";
+  const d = nouveau ? {forme: F.formes[0], cloture:`${aujourdhui().getUTCFullYear()}-12-31`, regime_imposition: F.regimes_imposition[0], regime_tva: F.regimes_tva[0],
+    jour_tva: F.jour_tva_defaut, depot_comptes: true, actif: true, collaborateur_id: moi(), ldm_statut: "À établir", lab_vigilance: "Standard"} : parId("dossiers", id);
+  if (!d) return ecrire(`<div class="vide">Dossier introuvable. <a href="#dossiers">Retour</a></div>`);
+  const opt = (liste, v) => liste.map(x => `<option ${x===v?"selected":""}>${x}</option>`).join("");
+  const cases = [...F.cases, ["actif","Dossier actif"]];
+  const synchro = PAYS.pennylane && d.pennylane_id;
+  ecrire(`<h1>${nouveau ? "Nouveau dossier" : esc(d.nom)}</h1>
+  ${synchro ? `<p class="note">Dossier synchronisé avec Pennylane : nom, forme, clôture, régimes, responsable et lettre de mission sont mis à jour chaque nuit.</p>` : ""}
+  <form class="form" id="f">
+  <label>Nom du dossier<input name="nom" required value="${esc(d.nom)}"></label>
+  <label>Forme juridique<select name="forme">${opt(F.formes, d.forme)}</select></label>
+  <label>${F.identifiant}<input name="ifu" value="${esc(d.ifu)}"></label>
+  <label>Date de clôture de l'exercice<input type="date" name="cloture" required value="${esc(d.cloture)}"></label>
+  <label>Régime d'imposition<select name="regime_imposition">${opt(F.regimes_imposition, d.regime_imposition)}</select></label>
+  <label>TVA<select name="regime_tva">${opt(F.regimes_tva, d.regime_tva)}</select></label>
+  ${F.jour_tva_modifiable ? `<label>Jour limite de TVA<input type="number" min="1" max="31" name="jour_tva" value="${esc(d.jour_tva)}"></label>` : ""}
+  <label>Effectif<input type="number" min="0" name="effectif" value="${esc(d.effectif)}"></label>
+  <label>Responsable<select name="collaborateur_id"><option value="">—</option>${vivants("collaborateurs").map(c => `<option value="${c.id}" ${c.id===d.collaborateur_id?"selected":""}>${esc(c.nom)}</option>`).join("")}</select></label>
+  <label>Honoraires annuels HT (${PAYS.monnaie})<input type="number" min="0" name="honoraires_annuels" value="${esc(d.honoraires_annuels)}"></label>
+  <label>Budget annuel d'heures<input type="number" min="0" name="budget_heures" value="${esc(d.budget_heures)}"></label>
+  ${cases.map(([k,l]) => `<label class="case"><input type="checkbox" name="${k}" ${d[k] ? "checked" : ""}> ${l}</label>`).join("")}
+  <h3 class="plein" style="margin:10px 0 0">Mission et conformité</h3>
+  <label>Lettre de mission<select name="ldm_statut">${opt(STATUTS_LDM, d.ldm_statut || "À établir")}</select></label>
+  <label>Date de signature de la lettre de mission<input type="date" name="ldm_date" value="${esc(d.ldm_date)}"></label>
+  <label>Acceptation de la mission (questionnaire)<input type="date" name="acceptation_date" value="${esc(d.acceptation_date)}"></label>
+  <label>LAB — niveau de vigilance<select name="lab_vigilance">${opt(VIGILANCES, d.lab_vigilance || "Standard")}</select></label>
+  <label>LAB — date de la dernière revue du dossier client<input type="date" name="lab_derniere_revue" value="${esc(d.lab_derniere_revue)}"></label>
+  <label class="case"><input type="checkbox" name="lab_be" ${d.lab_be ? "checked" : ""}> Bénéficiaires effectifs identifiés et vérifiés</label>
+  <label class="case"><input type="checkbox" name="lab_ppe" ${d.lab_ppe ? "checked" : ""}> Personne politiquement exposée (PPE)</label>
+  <label class="case"><input type="checkbox" name="lab_risque" ${d.lab_risque ? "checked" : ""}> Secteur ou pays à risque</label>
+  <label class="plein">Notes<textarea name="notes">${esc(d.notes)}</textarea></label>
+  <div class="plein barre"><button>Enregistrer et calculer les échéances</button>${nouveau ? "" : `<button type="button" class="danger" id="suppr">Supprimer le dossier</button>`}<a href="#dossiers">Annuler</a></div></form>
+  ${nouveau ? "" : (b => b.b ? `<p>Temps passé en ${aujourdhui().getUTCFullYear()} : <b>${hfr(b.h)} h</b> sur un budget de ${hfr(b.b)} h (${Math.round(100*b.pct)} %) ${BADGE_BUDGET[b.niveau]}</p>` : "")(budget(d))}
+  ${nouveau ? "" : `<h2>Échéances du dossier</h2>${tableEcheances(echeancesVisibles().filter(e => e.dossier_id === d.id).sort((a,b)=>a.date_limite.localeCompare(b.date_limite)), false)}`}`);
+  $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target), o = nouveau ? {id: uid(), suivi_depuis: iso(aujourdhui())} : d;
+    for (const k of ["nom","forme","ifu","cloture","regime_imposition","regime_tva","collaborateur_id","notes","ldm_statut","ldm_date","acceptation_date","lab_vigilance","lab_derniere_revue"]) o[k] = (f.get(k) || "").trim();
+    for (const k of ["effectif","honoraires_annuels","budget_heures"]) o[k] = f.get(k) === "" ? null : Number(f.get(k));
+    for (const [k] of cases) o[k] = f.has(k); for (const k of ["lab_be","lab_ppe","lab_risque"]) o[k] = f.has(k);
+    o.jour_tva = F.jour_tva_modifiable ? (Number(f.get("jour_tva")) || F.jour_tva_defaut) : F.jour_tva_defaut;
+    if (o.lab_ppe || o.lab_risque) o.lab_vigilance = "Renforcée";
+    if (nouveau) data.dossiers.push(o); toucher(o); recalculer(o); remplirMoi(); location.hash = `#dossier/${o.id}`; afficher(); };
+  if (!nouveau) { $("#suppr").onclick = () => { if (!confirm(`Supprimer le dossier « ${d.nom} » et ses échéances ?`)) return;
+    d.supprime = true; toucher(d); for (const e of data.echeances.filter(e => e.dossier_id === d.id)) { e.supprime = true; e.maj = maintenant(); } location.hash = "#dossiers"; };
+    brancherStatuts(); }
+}
+
+/* Conformité des missions : lettre de mission, acceptation, LAB, maintien, compte rendu, AGO et dépôt, dossier par dossier. */
+function conformite(){
+  const l = vivants("dossiers").filter(d => d.actif !== false && (!moi() || d.collaborateur_id === moi())).sort((a,b) => a.nom.localeCompare(b.nom));
+  const ech = echeancesVisibles(), t = iso(aujourdhui());
+  const derniere = (did, code) => ech.filter(e => e.dossier_id === did && e.code === code && e.date_limite <= iso(plusJours(aujourdhui(), 60))).sort((a,b) => b.date_limite.localeCompare(a.date_limite))[0];
+  const cellule = e => e ? `${BADGE[niveau(e)]}<div class="note">${dfr(e.date_limite)}</div>` : '<span class="note">—</span>';
+  const ldm = d => d.ldm_statut === "Signée" ? `<span class="badge b-fait">✓ Signée</span><div class="note">${dfr(d.ldm_date)}</div>` : `<span class="badge b-retard">${esc(d.ldm_statut || "À établir")}</span>`;
+  const lab = d => { const p = prochaineRevueLab(d); return !d.lab_derniere_revue ? '<span class="badge b-retard">À constituer</span>'
+      : `<span class="badge ${p < t ? "b-retard" : p <= iso(plusJours(aujourdhui(), 60)) ? "b-proche" : "b-fait"}">${esc(d.lab_vigilance || "Standard")}</span><div class="note">revue avant le ${dfr(p)}${d.lab_be ? "" : " · BE à vérifier"}</div>`; };
+  const nb = {ldm: l.filter(d => d.ldm_statut !== "Signée").length, lab: l.filter(d => !d.lab_derniere_revue || prochaineRevueLab(d) < t).length,
+    acc: l.filter(d => !d.acceptation_date).length};
+  ecrire(`<h1>Conformité des missions</h1>
+  <div class="cartes"><div class="carte"><div class="n ${nb.ldm ? "r" : "v"}">${nb.ldm}</div><div class="l">Lettres de mission non signées</div></div>
+  <div class="carte"><div class="n ${nb.acc ? "o" : "v"}">${nb.acc}</div><div class="l">Acceptations de mission non documentées</div></div>
+  <div class="carte"><div class="n ${nb.lab ? "r" : "v"}">${nb.lab}</div><div class="l">Dossiers LAB à constituer ou à revoir</div></div></div>
+  ${l.length ? `<table><thead><tr><th>Dossier</th><th>Lettre de mission</th><th>Acceptation</th><th>LAB</th><th>Maintien</th><th>Compte rendu</th><th>${PAYS.libelle_liasse}</th><th>AGO</th><th>Dépôt</th></tr></thead><tbody>
+  ${l.map(d => `<tr><td><a href="#dossier/${d.id}">${esc(d.nom)}</a><div class="note">${esc((parId("collaborateurs", d.collaborateur_id)||{}).nom || "")}</div></td>
+  <td>${ldm(d)}</td><td>${d.acceptation_date ? `<span class="badge b-fait">✓</span><div class="note">${dfr(d.acceptation_date)}</div>` : '<span class="badge b-proche">À documenter</span>'}</td>
+  <td>${lab(d)}</td><td>${cellule(derniere(d.id, "MISSION-MAINTIEN"))}</td><td>${cellule(derniere(d.id, "MISSION-CR"))}</td>
+  <td>${cellule(derniere(d.id, PAYS.code_liasse))}</td><td>${cellule(derniere(d.id, PAYS.code_ag))}</td><td>${cellule(derniere(d.id, PAYS.code_depot))}</td></tr>`).join("")}
+  </tbody></table><p class="note">Pour chaque colonne, l'échéance la plus récente (jusqu'à 60 jours à venir). Modifiez la lettre de mission, l'acceptation et la LAB dans la fiche du dossier ;
+  le maintien, le compte rendu, la liasse, l'AGO et le dépôt se cochent comme les autres échéances.</p>` : `<div class="vide">Aucun dossier.</div>`}`);
+}
+
+function collaborateurs(){
+  const l = vivants("collaborateurs");
+  ecrire(`<h1>Collaborateurs</h1><table><thead><tr><th>Nom</th><th>E-mail</th><th class="num">Coût horaire chargé (${PAYS.monnaie})</th><th class="num">Heures attendues / semaine</th><th></th></tr></thead><tbody>
+  ${l.map(c => `<tr><td><input data-c="${c.id}" data-k="nom" value="${esc(c.nom)}"></td><td><input data-c="${c.id}" data-k="email" type="email" value="${esc(c.email)}"></td>
+  <td class="num"><input data-c="${c.id}" data-k="taux" type="number" min="0" value="${esc(c.taux)}"></td><td class="num"><input data-c="${c.id}" data-k="heures_semaine" type="number" min="0" step="0.5" value="${esc(heuresAttendues(c))}"></td><td><button class="sec" data-sup="${c.id}">Retirer</button></td></tr>`).join("")}
+  <tr><td><input id="nn" placeholder="Nom"></td><td><input id="ne" type="email" placeholder="e-mail"></td><td class="num"><input id="nt" type="number" min="0" placeholder="0"></td><td class="num"><input id="nh" type="number" min="0" step="0.5" value="40"></td><td><button id="aj">Ajouter</button></td></tr>
+  </tbody></table><p class="note">Le coût horaire chargé (salaire et charges ramenés à l'heure) sert au calcul de la rentabilité. L'e-mail sert aux alertes. Les heures attendues servent au contrôle de saisie des temps (semaine incomplète sous 90 %).</p>`);
+  document.querySelectorAll("[data-c]").forEach(el => el.onchange = () => { const c = parId("collaborateurs", el.dataset.c); c[el.dataset.k] = ["taux","heures_semaine"].includes(el.dataset.k) ? Number(el.value) : el.value.trim(); toucher(c); remplirMoi(); });
+  document.querySelectorAll("[data-sup]").forEach(b => b.onclick = () => { const c = parId("collaborateurs", b.dataset.sup); if (confirm(`Retirer ${c.nom} ?`)) { c.supprime = true; toucher(c); remplirMoi(); afficher(); } });
+  $("#aj").onclick = () => { const nom = $("#nn").value.trim(); if (!nom) return; const c = {id: uid(), nom, email: $("#ne").value.trim(), taux: Number($("#nt").value)||0, heures_semaine: Number($("#nh").value)||40};
+    data.collaborateurs.push(c); toucher(c); remplirMoi(); afficher(); };
+}
+
+function temps(){
+  const m = moi(), l = vivants("temps").filter(x => !m || x.collaborateur_id === m).sort((a,b) => b.date.localeCompare(a.date)).slice(0, 60);
+  ecrire(`<h1>Saisie des temps</h1><form class="form" id="f">
+  <label>Date<input type="date" name="date" required value="${iso(aujourdhui())}"></label>
+  <label>Collaborateur<select name="collaborateur_id" required>${vivants("collaborateurs").map(c => `<option value="${c.id}" ${c.id===m?"selected":""}>${esc(c.nom)}</option>`).join("")}</select></label>
+  <label>Dossier<select name="dossier_id" required>${vivants("dossiers").sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}">${esc(d.nom)}</option>`).join("")}</select></label>
+  <label>Activité<select name="activite">${ACTIVITES.map(a => `<option>${a}</option>`).join("")}</select></label>
+  <label>Durée (heures)<input type="number" name="heures" min="0.25" step="0.25" required></label>
+  <label class="case"><input type="checkbox" name="facturable" checked> Facturable</label>
+  <label class="plein">Description<input name="description"></label>
+  <div class="plein"><button>Ajouter</button></div></form>
+  <h2>Dernières saisies${m ? "" : " du cabinet"}</h2>
+  ${l.length ? `<table><thead><tr><th>Date</th><th>Collaborateur</th><th>Dossier</th><th>Activité</th><th class="num">Heures</th><th></th></tr></thead><tbody>
+  ${l.map(x => `<tr><td>${dfr(x.date)}</td><td>${esc((parId("collaborateurs", x.collaborateur_id)||{}).nom)}</td><td>${esc((parId("dossiers", x.dossier_id)||{}).nom)}</td>
+  <td>${esc(x.activite)}${x.facturable ? "" : ' <span class="note">(non facturable)</span>'}${x.description ? `<div class="note">${esc(x.description)}</div>` : ""}</td><td class="num">${String(x.heures).replace(".", ",")}</td>
+  <td><button class="sec" data-sup="${x.id}">Supprimer</button></td></tr>`).join("")}</tbody></table>` : `<div class="vide">Aucune saisie.</div>`}`);
+  if (!vivants("collaborateurs").length || !vivants("dossiers").length) $("#f").innerHTML = `<div class="vide plein">Ajoutez d'abord des collaborateurs et des dossiers.</div>`;
+  else $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target);
+    const x = {id: uid(), date: f.get("date"), collaborateur_id: f.get("collaborateur_id"), dossier_id: f.get("dossier_id"), activite: f.get("activite"),
+      heures: Number(f.get("heures")), facturable: f.has("facturable"), description: f.get("description").trim()};
+    data.temps.push(x); toucher(x); afficher(); };
+  document.querySelectorAll("[data-sup]").forEach(b => b.onclick = () => { const x = parId("temps", b.dataset.sup); x.supprime = true; toucher(x); afficher(); });
+}
+
+/* Feuille de la semaine : une ligne par dossier, une colonne par jour. Une case affiche le total du jour ;
+   la modifier ajuste une saisie « feuille de semaine » sans toucher aux saisies détaillées. */
+function semaine(arg){
+  const cid = sessionStorage.getItem("semaine-collab") || moi() || (vivants("collaborateurs")[0]||{}).id || "";
+  const deb = arg ? lundi(deIso(arg)) : lundi(aujourdhui()), jours = JOURS.map((_, i) => iso(plusJours(deb, i))), fin = iso(plusJours(deb, 6));
+  const c = parId("collaborateurs", cid);
+  if (!vivants("collaborateurs").length || !vivants("dossiers").length) return ecrire(`<h1>Ma semaine</h1><div class="vide">Ajoutez d'abord des collaborateurs et des dossiers.</div>`);
+  const tps = vivants("temps").filter(x => x.collaborateur_id === cid && x.date >= jours[0] && x.date <= fin);
+  const extra = JSON.parse(sessionStorage.getItem("semaine-lignes") || "[]");
+  const lignes = [...new Set([...tps.map(x => x.dossier_id), ...extra])].map(id => parId("dossiers", id)).filter(Boolean).sort((a,b) => a.nom.localeCompare(b.nom));
+  const cellule = (did, j) => tps.filter(x => x.dossier_id === did && x.date === j).reduce((s,x) => s + (Number(x.heures)||0), 0);
+  const totJour = j => tps.filter(x => x.date === j).reduce((s,x) => s + (Number(x.heures)||0), 0), total = tps.reduce((s,x) => s + (Number(x.heures)||0), 0);
+  const att = heuresAttendues(c), cls = total >= 0.9*att ? "ok" : "sous";
+  ecrire(`<h1>Ma semaine</h1><div class="filtres">
+  <select id="sc">${vivants("collaborateurs").map(x => `<option value="${x.id}" ${x.id===cid?"selected":""}>${esc(x.nom)}</option>`).join("")}</select>
+  <a class="btn sec" href="#semaine/${iso(plusJours(deb,-7))}">← Semaine précédente</a>
+  <b style="align-self:center">Semaine du ${dfr(jours[0])} au ${dfr(jours[5])}</b>
+  <a class="btn sec" href="#semaine/${iso(plusJours(deb,7))}">Semaine suivante →</a>
+  ${iso(deb) !== iso(lundi(aujourdhui())) ? `<a class="btn sec" href="#semaine">Cette semaine</a>` : ""}</div>
+  <p>Total : <b class="${cls}">${hfr(total)} h</b> sur ${hfr(att)} h attendues ${total < 0.9*att ? '<span class="badge b-retard">Semaine incomplète</span>' : '<span class="badge b-fait">Complète</span>'}</p>
+  <table class="grille"><thead><tr><th>Dossier</th>${jours.map((j,i) => `<th class="num">${JOURS[i].slice(0,3)}. ${j.slice(8)}/${j.slice(5,7)}</th>`).join("")}<th class="num">Total</th></tr></thead><tbody>
+  ${lignes.map(d => `<tr><td>${esc(d.nom)}</td>${jours.map(j => `<td class="num"><input type="number" min="0" step="0.25" data-d="${d.id}" data-j="${j}" value="${cellule(d.id, j) || ""}"></td>`).join("")}
+  <td class="num"><b>${hfr(jours.reduce((s,j) => s + cellule(d.id, j), 0))}</b></td></tr>`).join("")}
+  <tr><td colspan="8"><select id="ajd"><option value="">+ Ajouter un dossier à la semaine…</option>${vivants("dossiers").filter(d => d.actif !== false && !lignes.includes(d)).sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}">${esc(d.nom)}</option>`).join("")}</select></td></tr>
+  </tbody><tfoot><tr><td>Total du jour</td>${jours.map(j => `<td class="num">${hfr(totJour(j))}</td>`).join("")}<td class="num">${hfr(total)}</td></tr></tfoot></table>
+  <p class="note">Saisissez les heures en décimal (1,5 = 1 h 30). Pour préciser l'activité ou un temps non facturable, utilisez « Saisie des temps » : les deux écrans se complètent.</p>`);
+  $("#sc").onchange = () => { sessionStorage.setItem("semaine-collab", $("#sc").value); afficher(); };
+  $("#ajd").onchange = () => { if (!$("#ajd").value) return; sessionStorage.setItem("semaine-lignes", JSON.stringify([...extra, $("#ajd").value])); afficher(); };
+  document.querySelectorAll("[data-d]").forEach(el => el.onchange = () => {
+    const did = el.dataset.d, j = el.dataset.j, voulu = Math.max(0, Number(String(el.value).replace(",", "."))||0);
+    const id = `semaine|${cid}|${did}|${j}`, autres = tps.filter(x => x.dossier_id === did && x.date === j && x.id !== id).reduce((s,x) => s + (Number(x.heures)||0), 0);
+    let x = parId("temps", id); const h = Math.max(0, voulu - autres);
+    if (!x) { if (!h) return afficher(); x = {id, date: j, collaborateur_id: cid, dossier_id: did, activite: "Feuille de semaine", facturable: true, description: ""}; data.temps.push(x); }
+    x.heures = h; x.supprime = !h; toucher(x); afficher(); });
+}
+
+/* Suivi des temps : par collaborateur (mois choisi) et contrôle des 4 dernières semaines ; budgets d'heures par dossier. */
+function suivi(){
+  const t = aujourdhui(), p = sessionStorage.getItem("periode-suivi") || iso(t).slice(0,7), dans = s => s && s.startsWith(p);
+  const moisOpts = Array.from({length: 12}, (_, i) => iso(ajouterMois(D(t.getUTCFullYear(), t.getUTCMonth()+1, 1), -i)).slice(0,7));
+  const semaines = [1,2,3,4].map(k => plusJours(lundi(t), -7*k)).reverse();
+  const cs = vivants("collaborateurs");
+  const lignes = cs.map(c => { const l = vivants("temps").filter(x => x.collaborateur_id === c.id && dans(x.date));
+    const h = l.reduce((s,x) => s + (Number(x.heures)||0), 0), f = l.filter(x => x.facturable !== false).reduce((s,x) => s + (Number(x.heures)||0), 0);
+    return {c, h, f, nf: h - f, cout: h * (Number(c.taux)||0), nd: new Set(l.map(x => x.dossier_id)).size}; });
+  const budgets = vivants("dossiers").filter(d => d.actif !== false && Number(d.budget_heures)).map(d => [d, budget(d)]).sort((a,b) => b[1].pct - a[1].pct);
+  ecrire(`<h1>Suivi des temps</h1>
+  <h2>Contrôle de saisie — 4 dernières semaines</h2>
+  ${cs.length ? `<table><thead><tr><th>Collaborateur</th>${semaines.map(s => `<th class="num">Sem. du ${dfr(iso(s)).slice(0,5)}</th>`).join("")}<th class="num">Attendu / sem.</th></tr></thead><tbody>
+  ${cs.map(c => `<tr><td><a href="#semaine/${iso(semaines[3])}" data-sc="${c.id}">${esc(c.nom)}</a></td>${semaines.map(s => { const h = heuresSemaine(c.id, s);
+     return `<td class="num ${h < 0.9*heuresAttendues(c) ? "sous" : ""}">${hfr(h)} h</td>`; }).join("")}<td class="num">${hfr(heuresAttendues(c))} h</td></tr>`).join("")}
+  </tbody></table><p class="note">En rouge : moins de 90 % des heures attendues. Le lundi, Make peut envoyer un rappel aux collaborateurs concernés.</p>` : `<div class="vide">Aucun collaborateur.</div>`}
+  <h2>Par collaborateur</h2><div class="filtres"><select id="p">${moisOpts.map(m => `<option value="${m}" ${m===p?"selected":""}>${MOIS[Number(m.slice(5))-1]} ${m.slice(0,4)}</option>`).join("")}</select></div>
+  ${lignes.length ? `<table><thead><tr><th>Collaborateur</th><th class="num">Heures</th><th class="num">Facturables</th><th class="num">Non facturables</th><th class="num">% facturable</th><th class="num">Coût</th><th class="num">Dossiers</th></tr></thead><tbody>
+  ${lignes.map(x => `<tr><td>${esc(x.c.nom)}</td><td class="num">${hfr(x.h)}</td><td class="num">${hfr(x.f)}</td><td class="num">${hfr(x.nf)}</td>
+  <td class="num">${x.h ? Math.round(100*x.f/x.h) + " %" : "—"}</td><td class="num">${fcfa(x.cout)}</td><td class="num">${x.nd}</td></tr>`).join("")}</tbody></table>` : ""}
+  <h2>Budgets d'heures des dossiers (${t.getUTCFullYear()})</h2>
+  ${budgets.length ? `<table><thead><tr><th>Dossier</th><th>Responsable</th><th class="num">Heures passées</th><th class="num">Budget</th><th class="num">Consommé</th><th></th></tr></thead><tbody>
+  ${budgets.map(([d, b]) => `<tr class="${b.niveau === "depasse" ? "retard" : ""}"><td><a href="#dossier/${d.id}">${esc(d.nom)}</a></td><td>${esc((parId("collaborateurs", d.collaborateur_id)||{}).nom || "—")}</td>
+  <td class="num">${hfr(b.h)} h</td><td class="num">${hfr(b.b)} h</td><td class="num ${b.niveau === "depasse" ? "sous" : b.niveau === "proche" ? "limite" : ""}">${Math.round(100*b.pct)} %</td><td>${BADGE_BUDGET[b.niveau]}</td></tr>`).join("")}
+  </tbody></table>` : `<div class="vide">Aucun budget d'heures renseigné : indiquez-le dans la fiche de chaque dossier.</div>`}`);
+  $("#p").onchange = () => { sessionStorage.setItem("periode-suivi", $("#p").value); afficher(); };
+  document.querySelectorAll("[data-sc]").forEach(a => a.onclick = () => sessionStorage.setItem("semaine-collab", a.dataset.sc));
+}
+
+function honoraires(){
+  const l = vivants("honoraires").sort((a,b) => b.date.localeCompare(a.date)).slice(0, 80);
+  ecrire(`<h1>Honoraires facturés</h1><form class="form" id="f">
+  <label>Date de facture<input type="date" name="date" required value="${iso(aujourdhui())}"></label>
+  <label>Dossier<select name="dossier_id" required>${vivants("dossiers").sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}">${esc(d.nom)}</option>`).join("")}</select></label>
+  <label>N° de facture<input name="numero"></label>
+  <label>Montant HT (${PAYS.monnaie})<input type="number" name="montant" min="0" required></label>
+  <div class="plein"><button>Ajouter</button></div></form>
+  <h2>Dernières factures</h2>${l.length ? `<table><thead><tr><th>Date</th><th>Dossier</th><th>N°</th><th class="num">Montant HT</th><th></th></tr></thead><tbody>
+  ${l.map(x => `<tr><td>${dfr(x.date)}</td><td>${esc((parId("dossiers", x.dossier_id)||{}).nom)}</td><td>${esc(x.numero)}</td><td class="num">${fcfa(x.montant)}</td>
+  <td><button class="sec" data-sup="${x.id}">Supprimer</button></td></tr>`).join("")}</tbody></table>` : `<div class="vide">Aucune facture.</div>`}`);
+  if (!vivants("dossiers").length) $("#f").innerHTML = `<div class="vide plein">Ajoutez d'abord des dossiers.</div>`;
+  else $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target);
+    const x = {id: uid(), date: f.get("date"), dossier_id: f.get("dossier_id"), numero: f.get("numero").trim(), montant: Number(f.get("montant"))};
+    data.honoraires.push(x); toucher(x); afficher(); };
+  document.querySelectorAll("[data-sup]").forEach(b => b.onclick = () => { const x = parId("honoraires", b.dataset.sup); x.supprime = true; toucher(x); afficher(); });
+}
+
+function rentabilite(){
+  const t = aujourdhui(), p = sessionStorage.getItem("periode-rent") || String(t.getUTCFullYear());
+  const dans = s => s && s.startsWith(p), lignes = [];
+  for (const d of vivants("dossiers")) {
+    const tps = vivants("temps").filter(x => x.dossier_id === d.id && dans(x.date)), hon = vivants("honoraires").filter(x => x.dossier_id === d.id && dans(x.date)).reduce((s,x) => s + (Number(x.montant)||0), 0);
+    const h = tps.reduce((s,x) => s + (Number(x.heures)||0), 0), cout = tps.reduce((s,x) => s + (Number(x.heures)||0) * (Number((parId("collaborateurs", x.collaborateur_id)||{}).taux)||0), 0);
+    if (!h && !hon) continue; lignes.push({d, h, hon, cout, marge: hon - cout});
+  }
+  lignes.sort((a,b) => a.marge - b.marge);
+  const tot = lignes.reduce((s,x) => ({h: s.h+x.h, hon: s.hon+x.hon, cout: s.cout+x.cout}), {h:0, hon:0, cout:0});
+  const annees = [...new Set([String(t.getUTCFullYear()), String(t.getUTCFullYear()-1)])];
+  const moisOpts = Array.from({length: 12}, (_, i) => iso(ajouterMois(D(t.getUTCFullYear(), t.getUTCMonth()+1, 1), -i)).slice(0,7));
+  ecrire(`<h1>Rentabilité par dossier</h1><div class="filtres"><select id="p">${[...annees.map(a => [a, `Année ${a}`]), ...moisOpts.map(m => [m, `${MOIS[Number(m.slice(5))-1]} ${m.slice(0,4)}`])]
+    .map(([v,l]) => `<option value="${v}" ${v===p?"selected":""}>${l}</option>`).join("")}</select></div>
+  ${lignes.length ? `<table><thead><tr><th>Dossier</th><th class="num">Honoraires HT</th><th class="num">Heures</th><th class="num">Coût du temps</th><th class="num">Marge</th><th class="num">Marge %</th><th class="num">Honoraires / heure</th></tr></thead><tbody>
+  ${lignes.map(x => `<tr class="${x.marge < 0 ? "retard" : ""}"><td><a href="#dossier/${x.d.id}">${esc(x.d.nom)}</a>${x.h === 0 ? ' <span class="note">(aucun temps saisi)</span>' : ""}</td>
+  <td class="num">${fcfa(x.hon)}</td><td class="num">${x.h.toLocaleString("fr-FR")}</td><td class="num">${fcfa(x.cout)}</td><td class="num ${x.marge<0?"err":""}">${fcfa(x.marge)}</td>
+  <td class="num">${x.hon ? Math.round(100*x.marge/x.hon) + " %" : "—"}</td><td class="num">${x.h ? fcfa(x.hon/x.h) : "—"}</td></tr>`).join("")}
+  <tr><td><b>Total</b></td><td class="num"><b>${fcfa(tot.hon)}</b></td><td class="num"><b>${tot.h.toLocaleString("fr-FR")}</b></td><td class="num"><b>${fcfa(tot.cout)}</b></td>
+  <td class="num"><b>${fcfa(tot.hon - tot.cout)}</b></td><td class="num"><b>${tot.hon ? Math.round(100*(tot.hon-tot.cout)/tot.hon) + " %" : "—"}</b></td><td class="num"><b>${tot.h ? fcfa(tot.hon/tot.h) : "—"}</b></td></tr>
+  </tbody></table><p class="note">Trié du moins rentable au plus rentable. Coût du temps = heures × coût horaire chargé du collaborateur.</p>` : `<div class="vide">Aucun temps ni honoraire sur cette période.</div>`}`);
+  $("#p").onchange = () => { sessionStorage.setItem("periode-rent", $("#p").value); afficher(); };
+}
+
+function parametres(){
+  ecrire(`<h1>Paramètres</h1><form class="form" id="f">
+  <label>Nom du cabinet<input name="cabinet" value="${esc(data.parametres.cabinet)}"></label>
+  <label>Adresse en copie des alertes<input type="email" name="copie" value="${esc(data.parametres.copie)}"></label>
+  ${VIGILANCES.map(v => `<label>LAB — revue tous les … ans (vigilance ${v.toLowerCase()})<input type="number" min="1" max="10" name="lab_${v}" value="${labAnnees(v)}"></label>`).join("")}
+  <div class="plein"><button>Enregistrer</button></div></form>
+  <h2>Données</h2><p>${modeLocal ? "Les données sont dans ce navigateur." : `Dossier : <b>${esc(dossierPartage && dossierPartage.name)}</b>, fichier <b>${NOM_DONNEES}</b>, enregistré automatiquement à chaque modification.${PAYS.pennylane ? ` Dernière synchronisation Pennylane : <b>${data.pennylane_le ? new Date(data.pennylane_le).toLocaleString("fr-FR") : "aucune"}</b>.` : ""}`}</p>
+  <div class="barre"><button class="sec" id="exp">Télécharger une copie (sauvegarde .json)</button><button class="sec" id="csv">Exporter les échéances (Excel .csv)</button>
+  ${modeLocal ? `<label class="btn sec">Importer une sauvegarde<input type="file" id="imp" accept=".json" hidden></label>` : `<button class="sec" id="chg">Changer de dossier</button>`}</div>
+  <h2>Règles appliquées</h2><table><thead><tr><th>Échéance</th><th>Date limite</th></tr></thead><tbody>
+  ${[...PAYS.regles, ...REGLES_MISSION()]
+     .map(([a,b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody></table>
+  <p class="note">${PAYS.note_regles}</p>`);
+  $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target); data.parametres = {cabinet: f.get("cabinet").trim(), copie: f.get("copie").trim(),
+      lab_annees: Object.fromEntries(VIGILANCES.map(v => [v, Number(f.get("lab_" + v)) || LAB_ANNEES_DEFAUT[v]]))}; recalculerTout();
+    data.parametres_maj = maintenant(); sale = true; programmerEnregistrement(); etat("Paramètres enregistrés", "ok"); };
+  const telecharger = (nom, contenu, type) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([contenu], {type})); a.download = nom; a.click(); };
+  $("#exp").onclick = () => { enrichir(); telecharger(`${CLE}-sauvegarde-${iso(aujourdhui())}.json`, JSON.stringify(data, null, 1), "application/json"); };
+  $("#csv").onclick = () => { const l = echeancesVisibles().sort((a,b) => a.date_limite.localeCompare(b.date_limite)), q = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
+    telecharger(`echeances-${iso(aujourdhui())}.csv`, "﻿" + [["Date limite","Dossier","Échéance","Catégorie","Responsable","Statut","Commentaire","Fait le"].join(";"),
+      ...l.map(e => { const d = parId("dossiers", e.dossier_id) || {}; return [dfr(e.date_limite), d.nom, e.libelle, e.categorie, (parId("collaborateurs", d.collaborateur_id)||{}).nom, e.statut, e.commentaire, dfr(e.date_realisation)].map(q).join(";"); })].join("\r\n"), "text/csv"); };
+  if ($("#imp")) $("#imp").onchange = async ev => { try { const v = JSON.parse(await ev.target.files[0].text()); data = fusionner(data, v); sale = true; programmerEnregistrement(); remplirMoi(); afficher(); } catch (e) { alert("Fichier illisible."); } };
+  if ($("#chg")) $("#chg").onclick = choisirDossier;
+}
+
+accueil();
+</script>
+</body>
+</html>

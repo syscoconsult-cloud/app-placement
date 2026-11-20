@@ -64,25 +64,9 @@ a{color:var(--bleu2)}
 <script>
 "use strict";
 /* ===================================================================== RÈGLES
-   Calendrier fiscal, social et juridique du Bénin (même référentiel que l'application web).
+   Calendrier fiscal, social et juridique du pays (même référentiel que l'application web), défini dans PAYS ci-dessous.
    Les dates tombant un samedi, un dimanche ou un jour férié sont reportées au jour ouvré suivant. */
 const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
-const DGI = "https://eservices.impots.bj", CNSS = "https://www.cnss.bj";
-const REF = {
-  "BJ-TVA":        {lib:"TVA — déclaration mensuelle", cat:"Fiscale", portail:DGI},
-  "BJ-ITS":        {lib:"ITS et VPS — retenues sur salaires", cat:"Fiscale", portail:DGI},
-  "BJ-AIB":        {lib:"AIB — reversement des retenues", cat:"Fiscale", portail:DGI},
-  "BJ-IRF-RET":    {lib:"IRF — reversement des retenues sur loyers versés", cat:"Fiscale", portail:DGI},
-  "BJ-CNSS":       {lib:"CNSS — déclaration et paiement des cotisations", cat:"Sociale", portail:CNSS},
-  "BJ-IS-AC":      {lib:"IS — acomptes", cat:"Fiscale", portail:DGI},
-  "BJ-PATENTE-AC": {lib:"Patente — acompte (50 % de la patente N-1)", cat:"Fiscale", portail:DGI},
-  "BJ-PATENTE":    {lib:"Patente — solde", cat:"Fiscale", portail:DGI},
-  "BJ-IRF":        {lib:"IRF — déclaration annuelle des revenus fonciers (date à confirmer)", cat:"Fiscale", portail:DGI},
-  "BJ-DSF":        {lib:"Dépôt des états financiers (DSF) et solde IS", cat:"Fiscale", portail:DGI},
-  "BJ-CPTES":      {lib:"États financiers SYSCOHADA — révision et production", cat:"Comptable", portail:null},
-  "BJ-AG":         {lib:"AGO d'approbation des comptes (OHADA)", cat:"Juridique", portail:null},
-  "BJ-RCCM":       {lib:"Dépôt des états financiers au RCCM", cat:"Juridique", portail:null},
-};
 const D = (y,m,d) => new Date(Date.UTC(y,m-1,d));
 const iso = d => d.toISOString().slice(0,10);
 const deIso = s => { const [y,m,d] = s.split("-").map(Number); return D(y,m,d); };
@@ -96,9 +80,42 @@ function paques(a){ const b=Math.floor(a/100),c=a%100,g=a%19,dd=Math.floor(b/4),
   return D(a, Math.floor((i+mm-7*q+114)/31), (i+mm-7*q+114)%31+1); }
 const cacheFeries = {};
 function feries(a){ if(!cacheFeries[a]){ const p = paques(a);
-  cacheFeries[a] = new Set([...[[1,1],[1,10],[5,1],[8,1],[8,15],[11,1],[12,25]].map(([m,j])=>iso(D(a,m,j))),
+  cacheFeries[a] = new Set([...FERIES_FIXES.map(([m,j])=>iso(D(a,m,j))),
     iso(plusJours(p,1)), iso(plusJours(p,39)), iso(plusJours(p,50))]); } return cacheFeries[a]; }
 function jourOuvre(d){ while([0,6].includes(d.getUTCDay()) || feries(d.getUTCFullYear()).has(iso(d))) d = plusJours(d,1); return d; }
+
+/* ----- Bénin : calendrier DGI, CNSS et OHADA ----- */
+const DGI = "https://eservices.impots.bj", CNSS = "https://www.cnss.bj";
+const FERIES_FIXES = [[1,1],[1,10],[5,1],[8,1],[8,15],[11,1],[12,25]]; // + lundi de Pâques, Ascension, lundi de Pentecôte
+const REF = {
+  "BJ-TVA":        {lib:"TVA — déclaration mensuelle", cat:"Fiscale", portail:DGI},
+  "BJ-ITS":        {lib:"ITS et VPS — retenues sur salaires", cat:"Fiscale", portail:DGI},
+  "BJ-AIB":        {lib:"AIB — reversement des retenues", cat:"Fiscale", portail:DGI},
+  "BJ-IRF-RET":    {lib:"IRF — reversement des retenues sur loyers versés", cat:"Fiscale", portail:DGI},
+  "BJ-CNSS":       {lib:"CNSS — déclaration et paiement des cotisations", cat:"Sociale", portail:CNSS},
+  "BJ-IS-AC":      {lib:"IS — acomptes", cat:"Fiscale", portail:DGI},
+  "BJ-PATENTE-AC": {lib:"Patente — acompte (50 % de la patente N-1)", cat:"Fiscale", portail:DGI},
+  "BJ-PATENTE":    {lib:"Patente — solde", cat:"Fiscale", portail:DGI},
+  "BJ-IRF":        {lib:"IRF — déclaration annuelle des revenus fonciers (date à confirmer)", cat:"Fiscale", portail:DGI},
+  "BJ-DSF":        {lib:"Dépôt de la liasse fiscale (DSF) et solde IS", cat:"Fiscale", portail:DGI},
+  "BJ-CPTES":      {lib:"États financiers SYSCOHADA — révision et production", cat:"Comptable", portail:null},
+  "BJ-AG":         {lib:"AGO d'approbation des comptes (OHADA)", cat:"Juridique", portail:null},
+  "BJ-RCCM":       {lib:"Dépôt des états financiers au RCCM", cat:"Juridique", portail:null},
+};
+const PAYS = {
+  cle: "echeances-benin", titre: "Échéances Bénin", drapeau: "🇧🇯", monnaie: "FCFA", pennylane: false,
+  dossier_conseille: "ECHEANCES FISCALES BENIN",
+  formulaire: {formes: ["SARL","SARLU","SA","SAS","SASU","SNC","GIE","EI","Association"], identifiant: "IFU",
+    regimes_imposition: ["IS"], regimes_tva: ["Mensuel (Bénin)","Non assujetti"], jour_tva_defaut: 10, jour_tva_modifiable: false,
+    cases: [["salaries","Salariés"],["depot_comptes","Dépôt des états financiers au RCCM"],["irf_retenue","Paie un loyer (retenue IRF à reverser)"],["irf_proprietaire","Perçoit des loyers (IRF propriétaire)"]]},
+  libelle_liasse: "Liasse (DSF)", code_liasse: "BJ-DSF", code_ag: "BJ-AG", code_depot: "BJ-RCCM",
+  correspond: () => false,
+  regles: [["TVA (assujettis)","10 du mois suivant"],["ITS et VPS (salariés)","10 du mois suivant"],["AIB","10 du mois suivant"],["IRF — retenue sur loyers versés","10 du mois suivant"],
+     ["CNSS","15 du mois suivant si effectif ≥ 20, sinon trimestriel (15 du mois suivant le trimestre)"],["IS — acomptes","10 mars, 10 juin, 10 septembre, 10 décembre"],
+     ["Patente","acompte le 10 février, solde le 30 avril"],["Liasse fiscale (DSF) et solde IS","30 avril"],["IRF — propriétaire","30 avril (à confirmer)"],
+     ["États financiers SYSCOHADA","objectif cabinet : 3 mois après la clôture"],["AGO (OHADA)","6 mois après la clôture"],["Dépôt au RCCM","7 mois après la clôture (à confirmer)"]],
+  note_regles: "Dates reportées au jour ouvré suivant (week-ends, fêtes fixes et chrétiennes ; les fêtes musulmanes ne sont pas prises en compte). À relire après chaque loi de finances.",
+};
 
 /* Échéances d'un dossier entre du et au (dates UTC). */
 function generer(dos, du, au){
@@ -139,8 +156,47 @@ function generer(dos, du, au){
   return [...out.values()].sort((x,y)=> x.date_limite.localeCompare(y.date_limite) || x.code.localeCompare(y.code));
 }
 
+
+/* ----- Mission et conformité (communes aux deux pays) ----- */
+const REF_MISSION = {
+  "MISSION-LDM":      {lib:"Lettre de mission — signature", cat:"Mission", portail:null},
+  "MISSION-ACCEPT":   {lib:"Acceptation de la mission — questionnaire et décision", cat:"Mission", portail:null},
+  "LAB-REVUE":        {lib:"LAB — revue du dossier client (identification, bénéficiaires effectifs, vigilance)", cat:"LAB", portail:null},
+  "LAB-CONSTITUTION": {lib:"LAB — constitution du dossier client (identification, bénéficiaires effectifs, niveau de vigilance)", cat:"LAB", portail:null},
+  "MISSION-MAINTIEN": {lib:"Maintien de la mission — revue annuelle (indépendance, risques, honoraires)", cat:"Mission", portail:null},
+  "MISSION-CR":       {lib:"Compte rendu de mission de l'expert-comptable et lettre d'affirmation", cat:"Mission", portail:null},
+};
+const refDe = code => REF[code] || REF_MISSION[code];
+const LAB_ANNEES_DEFAUT = {"Simplifiée": 3, "Standard": 2, "Renforcée": 1};
+const labAnnees = v => Number(((data && data.parametres && data.parametres.lab_annees) || {})[v]) || LAB_ANNEES_DEFAUT[v] || 2;
+function prochaineRevueLab(d){ return d.lab_derniere_revue ? iso(ajouterMois(deIso(d.lab_derniere_revue), 12 * labAnnees(d.lab_vigilance || "Standard"))) : ""; }
+const REGLES_MISSION = () => [
+  ["Lettre de mission, acceptation de la mission", "à formaliser dans le mois suivant l'entrée du dossier"],
+  ["LAB — revue du dossier client", `tous les ${labAnnees("Renforcée")} an(s) en vigilance renforcée, ${labAnnees("Standard")} ans en standard, ${labAnnees("Simplifiée")} ans en simplifiée (modifiable ci-dessus)`],
+  ["Maintien de la mission", "1 mois après la clôture de l'exercice"],
+  ["Compte rendu de mission et lettre d'affirmation", "avec les comptes annuels : 3 mois après la clôture"]];
+/* Échéances de mission liées aux exercices (fenêtre glissante). */
+function genererMission(dos, du, au){
+  const out = [], c0 = deIso(dos.cloture || `${du.getUTCFullYear()}-12-31`), finM = iso(c0) === iso(finDeMois(c0));
+  for (const k of [-1,0,1]) { let c = ajouterMois(c0, 12*k); if (finM) c = finDeMois(c);
+    const ex = `exercice clos le ${iso(c).split("-").reverse().join("/")}`;
+    for (const [code, d] of [["MISSION-MAINTIEN", finDeMois(ajouterMois(c,1))], ["MISSION-CR", finDeMois(ajouterMois(c,3))]]) {
+      const j = jourOuvre(d); if (j >= du && j <= au) out.push({code, date_limite: iso(j), periode: ex}); } }
+  return out;
+}
+/* Échéances ponctuelles : lettre de mission, acceptation, LAB. Hors fenêtre : elles restent visibles tant qu'elles ne sont pas faites. */
+function genererPonctuelles(dos){
+  const entree = iso(plusJours(deIso(dos.suivi_depuis || iso(aujourdhui())), 30)), out = [];
+  out.push({code: "MISSION-LDM", date_limite: entree, periode: "mission", fait: dos.ldm_statut === "Signée", le: dos.ldm_date});
+  out.push({code: "MISSION-ACCEPT", date_limite: entree, periode: "mission", fait: !!dos.acceptation_date, le: dos.acceptation_date});
+  if (!dos.lab_derniere_revue) out.push({code: "LAB-CONSTITUTION", date_limite: entree, periode: "dossier client", fait: false});
+  else { const p = prochaineRevueLab(dos); out.push({code: "LAB-REVUE", date_limite: p, periode: `revue avant le ${dfr(p)}`, fait: false}); }
+  return out;
+}
+
 /* ===================================================================== DONNÉES */
-const VIDE = () => ({format:"echeances-benin", version:1, parametres:{cabinet:"Sysco Consulting International", copie:""},
+const CLE = PAYS.cle;
+const VIDE = () => ({format:CLE, version:1, parametres:{cabinet:"Sysco Consulting International", copie:""},
   collaborateurs:[], dossiers:[], echeances:[], temps:[], honoraires:[]});
 const COLLECTIONS = ["collaborateurs","dossiers","echeances","temps","honoraires"];
 const ACTIVITES = ["Saisie comptable","Révision et bilan","Déclarations fiscales","Paie et social","Juridique","Conseil","Rendez-vous client","Administratif (non facturable)"];
@@ -151,7 +207,7 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString
 const vivants = col => data[col].filter(x => !x.supprime);
 const parId = (col, id) => data[col].find(x => x.id === id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fcfa = v => (Math.round(Number(v)||0)).toLocaleString("fr-FR") + " FCFA";
+const fcfa = v => (Math.round(Number(v)||0)).toLocaleString("fr-FR") + " " + PAYS.monnaie;
 const dfr = s => s ? s.split("-").reverse().join("/") : "";
 
 const lundi = d => plusJours(d, -((d.getUTCDay()+6)%7));
@@ -172,7 +228,7 @@ function toucher(obj){ obj.maj = maintenant(); sale = true; programmerEnregistre
    Permet à plusieurs personnes d'utiliser le même fichier (une suppression est une fiche « supprime »). */
 function fusionner(a, b){
   const r = {...a, ...b, parametres: (b.parametres_maj||"") > (a.parametres_maj||"") ? b.parametres : a.parametres,
-             parametres_maj: [a.parametres_maj||"", b.parametres_maj||""].sort()[1]};
+             parametres_maj: [a.parametres_maj||"", b.parametres_maj||""].sort()[1], pennylane_le: [a.pennylane_le||"", b.pennylane_le||""].sort()[1]};
   for (const col of COLLECTIONS) {
     const m = new Map();
     for (const x of [...(a[col]||[]), ...(b[col]||[])]) { const y = m.get(x.id); if (!y || (x.maj||"") >= (y.maj||"")) m.set(x.id, x); }
@@ -199,21 +255,24 @@ function enrichir(){
   data.enregistre_le = maintenant(); data.enregistre_le_jour = t;
 }
 
-/* ----- Stockage : fichier (Edge, Chrome) ou navigateur (autres) ----- */
-const IDB = { ouvrir: () => new Promise((ok, ko) => { const r = indexedDB.open("echeances-benin", 1);
+/* ----- Stockage : un dossier partagé (Edge, Chrome) ou le navigateur (autres) -----
+   Le dossier choisi contient le fichier de données (créé au besoin) et, en France, la synchronisation Pennylane
+   déposée chaque nuit par la tâche programmée Claude. */
+const IDB = { ouvrir: () => new Promise((ok, ko) => { const r = indexedDB.open(CLE, 1);
     r.onupgradeneeded = () => r.result.createObjectStore("k"); r.onsuccess = () => ok(r.result); r.onerror = () => ko(r.error); }),
   async lire(cle){ const db = await this.ouvrir(); return new Promise(ok => { const q = db.transaction("k").objectStore("k").get(cle); q.onsuccess = () => ok(q.result); q.onerror = () => ok(null); }); },
   async ecrire(cle, v){ const db = await this.ouvrir(); return new Promise(ok => { const t = db.transaction("k","readwrite"); t.objectStore("k").put(v, cle); t.oncomplete = ok; t.onerror = ok; }); } };
-const fichierPossible = "showOpenFilePicker" in window;
-const OPTIONS_FICHIER = {types:[{description:"Données Échéances Bénin", accept:{"application/json":[".json"]}}]};
+const fichierPossible = "showDirectoryPicker" in window;
+const NOM_DONNEES = `${CLE}-donnees.json`, NOM_SYNCHRO = "pennylane-synchro.json";
+let dossierPartage = null, derniereSynchro = 0;
 
 async function lireFichier(){ const f = await fichier.getFile(); derniereLecture = f.lastModified; const txt = await f.text();
-  const v = txt.trim() ? JSON.parse(txt) : VIDE(); if (v.format !== "echeances-benin") throw new Error("Ce fichier n'est pas un fichier de données Échéances Bénin."); return v; }
+  const v = txt.trim() ? JSON.parse(txt) : VIDE(); if (v.format !== CLE) throw new Error(`Ce fichier n'est pas un fichier de données ${PAYS.titre}.`); return v; }
 
 async function enregistrer(){
   if (!sale) return; sale = false; enrichir(); etat("Enregistrement…");
   try {
-    if (modeLocal) { localStorage.setItem("echeances-benin", JSON.stringify(data)); etat("Enregistré dans ce navigateur", "ok"); return; }
+    if (modeLocal) { localStorage.setItem(CLE, JSON.stringify(data)); etat("Enregistré dans ce navigateur", "ok"); return; }
     const f = await fichier.getFile();
     if (f.lastModified > derniereLecture) data = fusionner(await lireFichier(), data); // quelqu'un d'autre a enregistré entre-temps
     const w = await fichier.createWritable(); await w.write(JSON.stringify(data, null, 1)); await w.close();
@@ -223,38 +282,91 @@ async function enregistrer(){
 }
 function programmerEnregistrement(){ clearTimeout(minuterie); minuterie = setTimeout(enregistrer, 600); }
 window.addEventListener("beforeunload", e => { if (sale) { enregistrer(); e.preventDefault(); e.returnValue = ""; } });
-window.addEventListener("focus", async () => { // reprend les modifications des collègues
+window.addEventListener("focus", async () => { // reprend les modifications des collègues et la synchronisation de la nuit
   if (!fichier || modeLocal) return;
-  try { const f = await fichier.getFile(); if (f.lastModified > derniereLecture) { data = fusionner(data, await lireFichier()); afficher(); etat("Mis à jour avec les modifications des collègues", "ok"); } } catch (e) {}
+  try { const f = await fichier.getFile(); if (f.lastModified > derniereLecture) { data = fusionner(data, await lireFichier()); afficher(); etat("Mis à jour avec les modifications des collègues", "ok"); }
+    if (await lireSynchro()) afficher(); } catch (e) {}
 });
 function etat(t, cls){ const e = document.getElementById("etat"); e.textContent = t; e.className = cls || ""; }
 
-async function demarrerAvec(contenu){
-  data = fusionner(VIDE(), contenu); recalculerTout(false); document.getElementById("entete").hidden = false;
-  remplirMoi(); if (!location.hash) location.hash = "#tableau"; afficher();
-  etat(modeLocal ? "Données dans ce navigateur" : `Fichier : ${fichier.name}`);
+/* Synchronisation Pennylane (France) : fichier déposé dans le dossier par la tâche Claude de la nuit. */
+async function lireSynchro(){
+  if (!PAYS.pennylane || !dossierPartage) return false;
+  let h; try { h = await dossierPartage.getFileHandle(NOM_SYNCHRO); } catch (e) { return false; }
+  const f = await h.getFile(); if (f.lastModified <= derniereSynchro) return false; derniereSynchro = f.lastModified;
+  try { const r = importerPennylane(JSON.parse(await f.text())); if (r) etat(r, "ok"); return true; } catch (e) { etat("Synchronisation Pennylane illisible : " + e.message, "err"); return false; }
 }
-async function ouvrirFichier(){ try { [fichier] = await window.showOpenFilePicker(OPTIONS_FICHIER); await IDB.ecrire("fichier", fichier); await demarrerAvec(await lireFichier()); } catch (e) { if (e.name !== "AbortError") alert(e.message); } }
-async function creerFichier(){ try { fichier = await window.showSaveFilePicker({...OPTIONS_FICHIER, suggestedName:"echeances-benin-donnees.json"});
-  await IDB.ecrire("fichier", fichier); const w = await fichier.createWritable(); await w.write(JSON.stringify(VIDE())); await w.close(); await demarrerAvec(await lireFichier()); } catch (e) { if (e.name !== "AbortError") alert(e.message); } }
-async function reprendreFichier(h){ if ((await h.requestPermission({mode:"readwrite"})) !== "granted") return; fichier = h; await demarrerAvec(await lireFichier()); }
-function demarrerLocal(){ modeLocal = true; let v = VIDE(); try { v = JSON.parse(localStorage.getItem("echeances-benin")) || v; } catch (e) {} demarrerAvec(v); }
+
+async function demarrerAvec(contenu){
+  data = fusionner(VIDE(), contenu); recalculerTout(false); await lireSynchro(); document.getElementById("entete").hidden = false;
+  remplirMoi(); if (!location.hash) location.hash = "#tableau"; afficher();
+  etat(modeLocal ? "Données dans ce navigateur" : `Dossier : ${dossierPartage.name}`);
+}
+async function ouvrirDossier(h){
+  dossierPartage = h; fichier = await h.getFileHandle(NOM_DONNEES, {create: true});
+  await IDB.ecrire("dossier", h); await demarrerAvec(await lireFichier());
+}
+async function choisirDossier(){ try { await ouvrirDossier(await window.showDirectoryPicker({mode: "readwrite", id: CLE})); } catch (e) { if (e.name !== "AbortError") alert(e.message); } }
+async function reprendreDossier(h){ if ((await h.requestPermission({mode:"readwrite"})) !== "granted") return; try { await ouvrirDossier(h); } catch (e) { alert(e.message); } }
+function demarrerLocal(){ modeLocal = true; let v = VIDE(); try { v = JSON.parse(localStorage.getItem(CLE)) || v; } catch (e) {} demarrerAvec(v); }
 
 async function accueil(){
-  const h = fichierPossible ? await IDB.lire("fichier").catch(()=>null) : null;
-  document.getElementById("page").innerHTML = `<div class="accueil"><h1>🇧🇯 Échéances Bénin</h1>
-  <p>Suivi des échéances fiscales, sociales et juridiques des dossiers du cabinet, saisie des temps et rentabilité.</p>
-  ${fichierPossible ? `<p>Les données sont enregistrées dans un fichier <b>.json</b>. Placez-le dans un dossier partagé
-  (OneDrive ou SharePoint synchronisé) pour que toute l'équipe et l'envoi automatique des alertes l'utilisent.</p>
-  <div class="barre">${h ? `<button id="reprendre">Reprendre « ${esc(h.name)} »</button>` : ""}
-  <button class="${h ? "sec" : ""}" id="ouvrir">Ouvrir le fichier de données</button>
-  <button class="sec" id="creer">Créer un nouveau fichier de données</button></div>`
-  : `<p class="err">Ce navigateur ne permet pas d'enregistrer dans un fichier partagé. Ouvrez cette page avec
-  <b>Microsoft Edge</b> ou <b>Google Chrome</b> pour travailler à plusieurs. En attendant, les données restent dans ce navigateur
-  (pensez à les exporter).</p><div class="barre"><button id="local">Continuer dans ce navigateur</button></div>`}
-  <p class="note">Aucune donnée n'est envoyée sur Internet par cette page.</p></div>`;
+  document.title = PAYS.titre;
+  const h = fichierPossible ? await IDB.lire("dossier").catch(()=>null) : null;
+  document.getElementById("page").innerHTML = `<div class="accueil"><h1>${PAYS.drapeau} ${PAYS.titre}</h1>
+  <p>Suivi des échéances fiscales, sociales et juridiques, de la conformité des missions (LAB, acceptation et maintien, compte rendu, AGO), des temps et de la rentabilité.</p>
+  ${fichierPossible ? `<p>Choisissez le <b>dossier partagé</b> de l'outil (OneDrive ou SharePoint synchronisé, par exemple
+  <b>${PAYS.dossier_conseille}</b>). Les données y sont enregistrées dans <b>${NOM_DONNEES}</b>${PAYS.pennylane ? `, et la synchronisation Pennylane de la nuit y est lue (<b>${NOM_SYNCHRO}</b>)` : ""}.</p>
+  <div class="barre">${h ? `<button id="reprendre">Reprendre le dossier « ${esc(h.name)} »</button>` : ""}
+  <button class="${h ? "sec" : ""}" id="choisir">Choisir le dossier partagé</button></div>`
+  : `<p class="err">Ce navigateur ne permet pas de travailler dans un dossier partagé. Ouvrez cette page avec
+  <b>Microsoft Edge</b> ou <b>Google Chrome</b>. En attendant, les données restent dans ce navigateur (pensez à les exporter).</p>
+  <div class="barre"><button id="local">Continuer dans ce navigateur</button></div>`}
+  <p class="note">Cette page n'envoie aucune donnée sur Internet.</p></div>`;
   const on = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
-  on("reprendre", () => reprendreFichier(h)); on("ouvrir", ouvrirFichier); on("creer", creerFichier); on("local", demarrerLocal);
+  on("reprendre", () => reprendreDossier(h)); on("choisir", choisirDossier); on("local", demarrerLocal);
+}
+
+/* ===================================================================== PENNYLANE (France)
+   Fichier « pennylane-synchro.json » écrit chaque nuit par la tâche Claude (connecteurs Pennylane et Microsoft 365) :
+   {format:"pennylane-synchro", genere_le, collaborateurs:[{nom,email}],
+    dossiers:[{pennylane_id, nom, forme, siren, cloture, regime_imposition, regime_tva, jour_tva, salaries, effectif, collaborateur_email,
+               lettre_mission:{statut:"signee"|"envoyee"|"absente", date}}],
+    declarations:[{pennylane_id, type:"TVA"|"LIASSE", periode_fin, statut:"accepted"|"submitted"|"ready"|"rejected"|"draft", depose_le}]} */
+const LIBELLES_PL = {accepted:"acceptée", accepted_and_paid:"acceptée et payée", submitted:"déposée, accusé en attente", ready:"prête, non envoyée", rejected:"rejetée", draft:"brouillon"};
+function importerPennylane(s){
+  if (!s || s.format !== "pennylane-synchro") throw new Error("format inconnu");
+  if (data.pennylane_le && s.genere_le <= data.pennylane_le) return "";
+  const n = {dossiers: 0, nouveaux: 0, statuts: 0};
+  for (const c of s.collaborateurs || []) { if (!c.email) continue; const em = c.email.toLowerCase();
+    let x = vivants("collaborateurs").find(y => (y.email||"").toLowerCase() === em);
+    if (!x) { x = {id: "pl-" + em, nom: c.nom || em, email: em, taux: 0, heures_semaine: 35}; data.collaborateurs.push(x); toucher(x); } }
+  const LDM = {signee: "Signée", envoyee: "Envoyée, non signée", absente: "À établir"};
+  for (const p of s.dossiers || []) {
+    let d = data.dossiers.find(x => x.pennylane_id === String(p.pennylane_id));
+    if (!d) { d = {id: "pl-" + p.pennylane_id, pennylane_id: String(p.pennylane_id), suivi_depuis: iso(aujourdhui()), actif: true, depot_comptes: true, lab_vigilance: "Standard", ldm_statut: "À établir"}; data.dossiers.push(d); n.nouveaux++; }
+    if (d.supprime) continue;
+    const coll = p.collaborateur_email && vivants("collaborateurs").find(y => (y.email||"").toLowerCase() === p.collaborateur_email.toLowerCase());
+    const maj = {nom: p.nom, forme: p.forme, ifu: p.siren, cloture: p.cloture, regime_imposition: p.regime_imposition, regime_tva: p.regime_tva,
+      jour_tva: p.jour_tva || d.jour_tva || PAYS.formulaire.jour_tva_defaut, collaborateur_id: coll ? coll.id : d.collaborateur_id};
+    if (p.salaries !== undefined) maj.salaries = !!p.salaries; if (p.effectif !== undefined && p.effectif !== null) maj.effectif = p.effectif;
+    if (p.lettre_mission && LDM[p.lettre_mission.statut]) { maj.ldm_statut = LDM[p.lettre_mission.statut]; if (p.lettre_mission.date) maj.ldm_date = p.lettre_mission.date; }
+    let modifie = false; for (const [k, v] of Object.entries(maj)) if (v !== undefined && v !== null && v !== "" && d[k] !== v) { d[k] = v; modifie = true; }
+    if (modifie) { toucher(d); n.dossiers++; } recalculer(d);
+  }
+  for (const r of s.declarations || []) {
+    const d = data.dossiers.find(x => x.pennylane_id === String(r.pennylane_id)); if (!d || !r.periode_fin) continue;
+    const e = vivants("echeances").find(x => x.dossier_id === d.id && PAYS.correspond(x, r)); if (!e) continue;
+    const lib = LIBELLES_PL[r.statut] || r.statut, avant = JSON.stringify([e.statut, e.anomalie, e.pennylane]);
+    e.pennylane = lib;
+    if (["accepted","accepted_and_paid"].includes(r.statut)) { if (e.statut !== "Fait") { e.statut = "Fait"; e.date_realisation = (r.depose_le || iso(aujourdhui())).slice(0,10); } e.anomalie = ""; }
+    else if (r.statut === "submitted") { if (e.statut === "À faire") e.statut = "En cours"; e.anomalie = ""; }
+    else if (r.statut === "ready") e.anomalie = "Prête dans Pennylane mais pas envoyée";
+    else if (r.statut === "rejected") { e.anomalie = "Rejetée par l'administration"; if (e.statut === "Fait") e.statut = "En cours"; }
+    if (JSON.stringify([e.statut, e.anomalie, e.pennylane]) !== avant) { toucher(e); n.statuts++; }
+  }
+  data.pennylane_le = s.genere_le; sale = true; programmerEnregistrement();
+  return `Pennylane (${new Date(s.genere_le).toLocaleString("fr-FR")}) : ${n.nouveaux} nouveau(x) dossier(s), ${n.dossiers} mis à jour, ${n.statuts} statut(s) de déclaration`;
 }
 
 /* ===================================================================== MÉTIER */
@@ -264,40 +376,48 @@ function fenetre(dos){ const t = aujourdhui(); let du = ajouterMois(t, -1);
 /* Crée les échéances manquantes sur 12 mois glissants. Les échéances faites ou commentées ne sont jamais modifiées ;
    celles qui ne correspondent plus au profil du dossier sont retirées si elles sont encore « À faire » sans commentaire. */
 function recalculer(dos){
-  const [du, au] = fenetre(dos), attendues = new Map();
-  if (!dos.supprime && dos.actif !== false) for (const l of generer(dos, du, au)) attendues.set(`${dos.id}|${l.code}|${l.periode}`, l);
-  let change = false;
+  const [du, au] = fenetre(dos), attendues = new Map(), actif = !dos.supprime && dos.actif !== false;
+  if (actif) for (const l of [...generer(dos, du, au), ...genererMission(dos, du, au)]) attendues.set(`${dos.id}|${l.code}|${l.periode}`, l);
+  const ponct = new Map(actif ? genererPonctuelles(dos).map(l => [`${dos.id}|${l.code}|${l.periode}`, l]) : []);
+  let change = false; const maj = e => { e.maj = maintenant(); change = true; };
   for (const e of data.echeances.filter(e => e.dossier_id === dos.id && !e.supprime)) {
-    const l = attendues.get(e.id);
-    if (l) { if (e.date_limite !== l.date_limite && e.statut !== "Fait") { e.date_limite = l.date_limite; e.maj = maintenant(); change = true; } attendues.delete(e.id); }
-    else if (e.statut === "À faire" && !e.commentaire && e.date_limite >= iso(du)) { e.supprime = true; e.maj = maintenant(); change = true; }
+    const l = attendues.get(e.id) || ponct.get(e.id);
+    if (l) {
+      if (e.date_limite !== l.date_limite && e.statut !== "Fait") { e.date_limite = l.date_limite; maj(e); }
+      if (l.fait && e.statut !== "Fait") { e.statut = "Fait"; e.date_realisation = l.le || iso(aujourdhui()); maj(e); }
+      if (l.fait === false && e.statut === "Fait" && e.auto) { e.statut = "À faire"; e.date_realisation = ""; maj(e); }
+      attendues.delete(e.id); ponct.delete(e.id);
+    } else if (["LAB-REVUE","LAB-CONSTITUTION"].includes(e.code) && e.statut !== "Fait") { // revue faite : la date de dernière revue a avancé
+      e.statut = "Fait"; e.date_realisation = dos.lab_derniere_revue || iso(aujourdhui()); maj(e);
+    } else if (e.statut === "À faire" && !e.commentaire && e.date_limite >= iso(du) && !e.pennylane) { e.supprime = true; maj(e); }
   }
-  for (const [id, l] of attendues) { const r = REF[l.code];
+  for (const [id, l] of [...attendues, ...ponct]) { const r = refDe(l.code);
     data.echeances.push({id, dossier_id: dos.id, code: l.code, libelle: `${r.lib} — ${l.periode}`, categorie: r.cat, portail: r.portail,
-      date_limite: l.date_limite, periode: l.periode, statut: "À faire", commentaire: "", date_realisation: "", maj: maintenant()});
+      date_limite: l.date_limite, periode: l.periode, statut: l.fait ? "Fait" : "À faire", auto: l.fait !== undefined,
+      commentaire: "", date_realisation: l.fait ? (l.le || iso(aujourdhui())) : "", maj: maintenant()});
     change = true; }
   return change;
 }
 function recalculerTout(sauver = true){ let c = false; for (const d of vivants("dossiers")) c = recalculer(d) || c; if (c && sauver) { sale = true; programmerEnregistrement(); } else if (c) { sale = true; programmerEnregistrement(); } }
 
-function niveau(e){ if (e.statut === "Fait") return "fait"; const t = iso(aujourdhui());
+function niveau(e){ if (e.statut === "Fait") return "fait"; if (e.anomalie) return "anomalie"; const t = iso(aujourdhui());
   if (e.date_limite < t) return "retard"; if (e.date_limite <= iso(plusJours(aujourdhui(), 7))) return "proche"; return "venir"; }
-const BADGE = {retard:'<span class="badge b-retard">● En retard</span>', proche:'<span class="badge b-proche">● Sous 7 jours</span>',
+const BADGE = {anomalie:'<span class="badge b-retard">⚠ Anomalie</span>', retard:'<span class="badge b-retard">● En retard</span>', proche:'<span class="badge b-proche">● Sous 7 jours</span>',
   venir:'<span class="badge b-venir">● À venir</span>', fait:'<span class="badge b-fait">✓ Fait</span>'};
 function echeancesVisibles(){ return vivants("echeances").filter(e => { const d = parId("dossiers", e.dossier_id); return d && !d.supprime && d.actif !== false; }); }
-const moi = () => localStorage.getItem("echeances-benin-moi") || "";
+const moi = () => localStorage.getItem(CLE + "-moi") || "";
 function remplirMoi(){ const s = document.getElementById("moi");
   s.innerHTML = `<option value="">Tout le cabinet</option>` + vivants("collaborateurs").map(c => `<option value="${c.id}">${esc(c.nom)}</option>`).join("");
-  s.value = moi(); s.onchange = () => { localStorage.setItem("echeances-benin-moi", s.value); afficher(); }; }
+  s.value = moi(); s.onchange = () => { localStorage.setItem(CLE + "-moi", s.value); afficher(); }; }
 
 /* ===================================================================== ÉCRANS */
-const PAGES = [["tableau","Tableau de bord"],["echeances","Échéances"],["dossiers","Dossiers"],["semaine","Ma semaine"],["temps","Saisie des temps"],["suivi","Suivi des temps"],
+const PAGES = [["tableau","Tableau de bord"],["echeances","Échéances"],["dossiers","Dossiers"],["semaine","Ma semaine"],["temps","Saisie des temps"],["suivi","Suivi des temps"],["conformite","Conformité"],
   ["honoraires","Honoraires"],["rentabilite","Rentabilité"],["collaborateurs","Collaborateurs"],["parametres","Paramètres"]];
 window.addEventListener("hashchange", () => afficher());
 function afficher(){
   const [page, arg] = location.hash.slice(1).split("/");
   document.getElementById("menu").innerHTML = PAGES.map(([k,l]) => `<a href="#${k}" class="${page===k || (page==="dossier" && k==="dossiers") ? "actif":""}">${l}</a>`).join("");
-  const f = {tableau, echeances, dossiers, dossier: () => fiche(arg), semaine: () => semaine(arg), temps, suivi, honoraires, rentabilite, collaborateurs, parametres}[page] || tableau;
+  const f = {tableau, echeances, dossiers, dossier: () => fiche(arg), semaine: () => semaine(arg), temps, suivi, conformite, honoraires, rentabilite, collaborateurs, parametres}[page] || tableau;
   document.getElementById("page").innerHTML = ""; f();
 }
 const $ = s => document.querySelector(s);
@@ -305,7 +425,7 @@ const ecrire = html => { $("#page").innerHTML = html; };
 
 function ligneEcheance(e, avecDossier = true){
   const d = parId("dossiers", e.dossier_id) || {}, c = parId("collaborateurs", d.collaborateur_id) || {}, n = niveau(e);
-  return `<tr class="${n==="retard"?"retard":""}"><td>${dfr(e.date_limite)}</td><td>${BADGE[n]}</td>
+  return `<tr class="${["retard","anomalie"].includes(n)?"retard":""}"><td>${dfr(e.date_limite)}</td><td>${BADGE[n]}${e.anomalie ? `<div class="note err">${esc(e.anomalie)}</div>` : ""}${e.pennylane && !e.anomalie ? `<div class="note">Pennylane : ${esc(e.pennylane)}</div>` : ""}</td>
   ${avecDossier ? `<td><a href="#dossier/${d.id}">${esc(d.nom)}</a></td>` : ""}
   <td><span class="cat">${esc(e.categorie)}</span>${esc(e.libelle)}${e.portail ? ` <a href="${e.portail}" target="_blank" rel="noopener">portail ↗</a>` : ""}</td>
   <td>${esc(c.nom || "—")}</td>
@@ -326,12 +446,12 @@ function filtreMoi(liste){ const m = moi(); return m ? liste.filter(e => (parId(
 
 function tableau(){
   const t = aujourdhui(), toutes = filtreMoi(echeancesVisibles()), ms = iso(t).slice(0,7);
-  const retard = toutes.filter(e => niveau(e) === "retard"), proche = toutes.filter(e => niveau(e) === "proche");
+  const retard = toutes.filter(e => ["retard","anomalie"].includes(niveau(e))), proche = toutes.filter(e => niveau(e) === "proche");
   const duMois = toutes.filter(e => e.date_limite.startsWith(ms)), faitesMois = duMois.filter(e => e.statut === "Fait");
-  const a30 = toutes.filter(e => e.statut !== "Fait" && e.date_limite <= iso(plusJours(t, 30))).sort((a,b) => a.date_limite.localeCompare(b.date_limite));
+  const a30 = toutes.filter(e => e.statut !== "Fait" && (e.date_limite <= iso(plusJours(t, 30)) || e.anomalie)).sort((a,b) => a.date_limite.localeCompare(b.date_limite));
   if (!vivants("dossiers").length) return ecrire(`<h1>Tableau de bord</h1><div class="vide">Commencez par ajouter vos <a href="#collaborateurs">collaborateurs</a>, puis vos <a href="#dossiers">dossiers</a> : les échéances se créent automatiquement.</div>`);
   ecrire(`<h1>Tableau de bord</h1>
-  <div class="cartes"><div class="carte"><div class="n r">${retard.length}</div><div class="l">En retard</div></div>
+  <div class="cartes"><div class="carte"><div class="n r">${retard.length}</div><div class="l">En retard ou en anomalie</div></div>
   <div class="carte"><div class="n o">${proche.length}</div><div class="l">À traiter sous 7 jours</div></div>
   <div class="carte"><div class="n v">${faitesMois.length} / ${duMois.length}</div><div class="l">Échéances faites en ${MOIS[t.getUTCMonth()]} ${t.getUTCFullYear()}</div></div>
   ${(() => { const sp = plusJours(lundi(t), -7), cs = vivants("collaborateurs").filter(c => !moi() || c.id === moi()), inc = cs.filter(c => heuresSemaine(c.id, sp) < 0.9*heuresAttendues(c));
@@ -345,7 +465,7 @@ function tableau(){
 
 function preparerMails(){
   const t = iso(aujourdhui()), lim = iso(plusJours(aujourdhui(), 7)), parC = new Map();
-  for (const e of echeancesVisibles()) { if (e.statut === "Fait" || e.date_limite > lim) continue;
+  for (const e of echeancesVisibles()) { if (e.statut === "Fait" || (e.date_limite > lim && !e.anomalie)) continue;
     const d = parId("dossiers", e.dossier_id), c = parId("collaborateurs", d.collaborateur_id); if (!c || !c.email) continue;
     if (!parC.has(c.id)) parC.set(c.id, {c, l: []}); parC.get(c.id).l.push(e); }
   if (!parC.size) return alert("Aucune échéance en retard ou à moins de 7 jours : rien à envoyer.");
@@ -354,7 +474,7 @@ function preparerMails(){
     const r = l.filter(e => e.date_limite < t).length, p = l.length - r;
     const corps = `Bonjour ${c.nom},\n\n` + (r ? `🔴 En retard (${r}) :\n` + l.filter(e => e.date_limite < t).map(e => `• ${dfr(e.date_limite)} · ${parId("dossiers", e.dossier_id).nom} · ${e.libelle} [${e.statut}]`).join("\n") + "\n\n" : "")
       + (p ? `🟠 Dans les 7 jours (${p}) :\n` + l.filter(e => e.date_limite >= t).map(e => `• ${dfr(e.date_limite)} · ${parId("dossiers", e.dossier_id).nom} · ${e.libelle} [${e.statut}]`).join("\n") + "\n\n" : "")
-      + `Merci de mettre à jour les statuts dans l'outil Échéances Bénin.\n`;
+      + `Merci de mettre à jour les statuts dans l'outil ${PAYS.titre}.\n`;
     return `<p><a class="btn" href="mailto:${encodeURIComponent(c.email)}?subject=${encodeURIComponent(`Échéances : ${r} en retard, ${p} sous 7 jours`)}${copie}&body=${encodeURIComponent(corps)}">✉ ${esc(c.nom)} — ${r} en retard, ${p} sous 7 jours</a></p>`; }).join("");
   ecrire(`<h1>E-mails d'alerte</h1><p class="note">Cliquez sur chaque bouton : votre messagerie ouvre un e-mail prêt, vérifiez-le puis envoyez-le.</p>${liens}<p><a href="#tableau">← Retour</a></p>`);
 }
@@ -365,7 +485,7 @@ function echeances(){
   let l = echeancesVisibles();
   if (coll) l = l.filter(e => (parId("dossiers", e.dossier_id)||{}).collaborateur_id === coll);
   if (dos) l = l.filter(e => e.dossier_id === dos);
-  if (st === "nonfaites") l = l.filter(e => e.statut !== "Fait"); else if (st === "retard") l = l.filter(e => niveau(e) === "retard"); else if (st !== "toutes") l = l.filter(e => e.statut === st);
+  if (st === "nonfaites") l = l.filter(e => e.statut !== "Fait"); else if (st === "retard") l = l.filter(e => ["retard","anomalie"].includes(niveau(e))); else if (st !== "toutes") l = l.filter(e => e.statut === st);
   if (mois) l = l.filter(e => e.date_limite.startsWith(mois));
   l.sort((a,b) => a.date_limite.localeCompare(b.date_limite));
   ecrire(`<h1>Échéances</h1><div class="filtres">
@@ -383,45 +503,87 @@ function dossiers(){
   ${l.length ? `<table><thead><tr><th>Dossier</th><th>Forme</th><th>Clôture</th><th>TVA</th><th>Responsable</th><th class="num">Heures / budget</th><th class="num">En retard</th><th class="num">Sous 7 jours</th></tr></thead><tbody>
   ${l.map(d => { const e = echeancesVisibles().filter(x => x.dossier_id === d.id), c = parId("collaborateurs", d.collaborateur_id) || {};
     return `<tr><td><a href="#dossier/${d.id}">${esc(d.nom)}</a>${d.actif === false ? ' <span class="note">(inactif)</span>' : ""}</td><td>${esc(d.forme)}</td><td>${dfr(d.cloture)}</td>
-    <td>${esc(d.regime_tva)}</td><td>${esc(c.nom || "—")}</td><td class="num">${(b => b.b ? `${hfr(b.h)} / ${hfr(b.b)} h ${BADGE_BUDGET[b.niveau]}` : (b.h ? hfr(b.h) + " h" : ""))(budget(d))}</td><td class="num">${e.filter(x => niveau(x)==="retard").length || ""}</td><td class="num">${e.filter(x => niveau(x)==="proche").length || ""}</td></tr>`; }).join("")}
+    <td>${esc(d.regime_tva)}</td><td>${esc(c.nom || "—")}</td><td class="num">${(b => b.b ? `${hfr(b.h)} / ${hfr(b.b)} h ${BADGE_BUDGET[b.niveau]}` : (b.h ? hfr(b.h) + " h" : ""))(budget(d))}</td><td class="num">${e.filter(x => ["retard","anomalie"].includes(niveau(x))).length || ""}</td><td class="num">${e.filter(x => niveau(x)==="proche").length || ""}</td></tr>`; }).join("")}
   </tbody></table>` : `<div class="vide">Aucun dossier.</div>`}`);
 }
 
+const VIGILANCES = ["Simplifiée","Standard","Renforcée"];
+const STATUTS_LDM = ["À établir","Envoyée, non signée","Signée"];
 function fiche(id){
-  const nouveau = id === "nouveau", d = nouveau ? {forme:"SARL", cloture:`${aujourdhui().getUTCFullYear()}-12-31`, regime_imposition:"IS", regime_tva:"Mensuel (Bénin)",
-    jour_tva:10, depot_comptes:true, actif:true, collaborateur_id: moi()} : parId("dossiers", id);
+  const F = PAYS.formulaire, nouveau = id === "nouveau";
+  const d = nouveau ? {forme: F.formes[0], cloture:`${aujourdhui().getUTCFullYear()}-12-31`, regime_imposition: F.regimes_imposition[0], regime_tva: F.regimes_tva[0],
+    jour_tva: F.jour_tva_defaut, depot_comptes: true, actif: true, collaborateur_id: moi(), ldm_statut: "À établir", lab_vigilance: "Standard"} : parId("dossiers", id);
   if (!d) return ecrire(`<div class="vide">Dossier introuvable. <a href="#dossiers">Retour</a></div>`);
   const opt = (liste, v) => liste.map(x => `<option ${x===v?"selected":""}>${x}</option>`).join("");
-  const cases = [["salaries","Salariés"],["depot_comptes","Dépôt des états financiers au RCCM"],["irf_retenue","Paie un loyer (retenue IRF à reverser)"],["irf_proprietaire","Perçoit des loyers (IRF propriétaire)"],["actif","Dossier actif"]];
-  ecrire(`<h1>${nouveau ? "Nouveau dossier" : esc(d.nom)}</h1><form class="form" id="f">
+  const cases = [...F.cases, ["actif","Dossier actif"]];
+  const synchro = PAYS.pennylane && d.pennylane_id;
+  ecrire(`<h1>${nouveau ? "Nouveau dossier" : esc(d.nom)}</h1>
+  ${synchro ? `<p class="note">Dossier synchronisé avec Pennylane : nom, forme, clôture, régimes, responsable et lettre de mission sont mis à jour chaque nuit.</p>` : ""}
+  <form class="form" id="f">
   <label>Nom du dossier<input name="nom" required value="${esc(d.nom)}"></label>
-  <label>Forme juridique<select name="forme">${opt(["SARL","SARLU","SA","SAS","SASU","SNC","GIE","EI","Association"], d.forme)}</select></label>
-  <label>IFU<input name="ifu" value="${esc(d.ifu)}"></label>
+  <label>Forme juridique<select name="forme">${opt(F.formes, d.forme)}</select></label>
+  <label>${F.identifiant}<input name="ifu" value="${esc(d.ifu)}"></label>
   <label>Date de clôture de l'exercice<input type="date" name="cloture" required value="${esc(d.cloture)}"></label>
-  <label>Régime d'imposition<select name="regime_imposition">${opt(["IS"], d.regime_imposition)}</select></label>
-  <label>TVA<select name="regime_tva">${opt(["Mensuel (Bénin)","Non assujetti"], d.regime_tva)}</select></label>
+  <label>Régime d'imposition<select name="regime_imposition">${opt(F.regimes_imposition, d.regime_imposition)}</select></label>
+  <label>TVA<select name="regime_tva">${opt(F.regimes_tva, d.regime_tva)}</select></label>
+  ${F.jour_tva_modifiable ? `<label>Jour limite de TVA<input type="number" min="1" max="31" name="jour_tva" value="${esc(d.jour_tva)}"></label>` : ""}
   <label>Effectif<input type="number" min="0" name="effectif" value="${esc(d.effectif)}"></label>
   <label>Responsable<select name="collaborateur_id"><option value="">—</option>${vivants("collaborateurs").map(c => `<option value="${c.id}" ${c.id===d.collaborateur_id?"selected":""}>${esc(c.nom)}</option>`).join("")}</select></label>
-  <label>Honoraires annuels HT (FCFA)<input type="number" min="0" name="honoraires_annuels" value="${esc(d.honoraires_annuels)}"></label>
+  <label>Honoraires annuels HT (${PAYS.monnaie})<input type="number" min="0" name="honoraires_annuels" value="${esc(d.honoraires_annuels)}"></label>
   <label>Budget annuel d'heures<input type="number" min="0" name="budget_heures" value="${esc(d.budget_heures)}"></label>
   ${cases.map(([k,l]) => `<label class="case"><input type="checkbox" name="${k}" ${d[k] ? "checked" : ""}> ${l}</label>`).join("")}
+  <h3 class="plein" style="margin:10px 0 0">Mission et conformité</h3>
+  <label>Lettre de mission<select name="ldm_statut">${opt(STATUTS_LDM, d.ldm_statut || "À établir")}</select></label>
+  <label>Date de signature de la lettre de mission<input type="date" name="ldm_date" value="${esc(d.ldm_date)}"></label>
+  <label>Acceptation de la mission (questionnaire)<input type="date" name="acceptation_date" value="${esc(d.acceptation_date)}"></label>
+  <label>LAB — niveau de vigilance<select name="lab_vigilance">${opt(VIGILANCES, d.lab_vigilance || "Standard")}</select></label>
+  <label>LAB — date de la dernière revue du dossier client<input type="date" name="lab_derniere_revue" value="${esc(d.lab_derniere_revue)}"></label>
+  <label class="case"><input type="checkbox" name="lab_be" ${d.lab_be ? "checked" : ""}> Bénéficiaires effectifs identifiés et vérifiés</label>
+  <label class="case"><input type="checkbox" name="lab_ppe" ${d.lab_ppe ? "checked" : ""}> Personne politiquement exposée (PPE)</label>
+  <label class="case"><input type="checkbox" name="lab_risque" ${d.lab_risque ? "checked" : ""}> Secteur ou pays à risque</label>
   <label class="plein">Notes<textarea name="notes">${esc(d.notes)}</textarea></label>
   <div class="plein barre"><button>Enregistrer et calculer les échéances</button>${nouveau ? "" : `<button type="button" class="danger" id="suppr">Supprimer le dossier</button>`}<a href="#dossiers">Annuler</a></div></form>
   ${nouveau ? "" : (b => b.b ? `<p>Temps passé en ${aujourdhui().getUTCFullYear()} : <b>${hfr(b.h)} h</b> sur un budget de ${hfr(b.b)} h (${Math.round(100*b.pct)} %) ${BADGE_BUDGET[b.niveau]}</p>` : "")(budget(d))}
   ${nouveau ? "" : `<h2>Échéances du dossier</h2>${tableEcheances(echeancesVisibles().filter(e => e.dossier_id === d.id).sort((a,b)=>a.date_limite.localeCompare(b.date_limite)), false)}`}`);
   $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target), o = nouveau ? {id: uid(), suivi_depuis: iso(aujourdhui())} : d;
-    for (const k of ["nom","forme","ifu","cloture","regime_imposition","regime_tva","collaborateur_id","notes"]) o[k] = (f.get(k) || "").trim();
+    for (const k of ["nom","forme","ifu","cloture","regime_imposition","regime_tva","collaborateur_id","notes","ldm_statut","ldm_date","acceptation_date","lab_vigilance","lab_derniere_revue"]) o[k] = (f.get(k) || "").trim();
     for (const k of ["effectif","honoraires_annuels","budget_heures"]) o[k] = f.get(k) === "" ? null : Number(f.get(k));
-    for (const [k] of cases) o[k] = f.has(k); o.jour_tva = 10;
+    for (const [k] of cases) o[k] = f.has(k); for (const k of ["lab_be","lab_ppe","lab_risque"]) o[k] = f.has(k);
+    o.jour_tva = F.jour_tva_modifiable ? (Number(f.get("jour_tva")) || F.jour_tva_defaut) : F.jour_tva_defaut;
+    if (o.lab_ppe || o.lab_risque) o.lab_vigilance = "Renforcée";
     if (nouveau) data.dossiers.push(o); toucher(o); recalculer(o); remplirMoi(); location.hash = `#dossier/${o.id}`; afficher(); };
   if (!nouveau) { $("#suppr").onclick = () => { if (!confirm(`Supprimer le dossier « ${d.nom} » et ses échéances ?`)) return;
     d.supprime = true; toucher(d); for (const e of data.echeances.filter(e => e.dossier_id === d.id)) { e.supprime = true; e.maj = maintenant(); } location.hash = "#dossiers"; };
     brancherStatuts(); }
 }
 
+/* Conformité des missions : lettre de mission, acceptation, LAB, maintien, compte rendu, AGO et dépôt, dossier par dossier. */
+function conformite(){
+  const l = vivants("dossiers").filter(d => d.actif !== false && (!moi() || d.collaborateur_id === moi())).sort((a,b) => a.nom.localeCompare(b.nom));
+  const ech = echeancesVisibles(), t = iso(aujourdhui());
+  const derniere = (did, code) => ech.filter(e => e.dossier_id === did && e.code === code && e.date_limite <= iso(plusJours(aujourdhui(), 60))).sort((a,b) => b.date_limite.localeCompare(a.date_limite))[0];
+  const cellule = e => e ? `${BADGE[niveau(e)]}<div class="note">${dfr(e.date_limite)}</div>` : '<span class="note">—</span>';
+  const ldm = d => d.ldm_statut === "Signée" ? `<span class="badge b-fait">✓ Signée</span><div class="note">${dfr(d.ldm_date)}</div>` : `<span class="badge b-retard">${esc(d.ldm_statut || "À établir")}</span>`;
+  const lab = d => { const p = prochaineRevueLab(d); return !d.lab_derniere_revue ? '<span class="badge b-retard">À constituer</span>'
+      : `<span class="badge ${p < t ? "b-retard" : p <= iso(plusJours(aujourdhui(), 60)) ? "b-proche" : "b-fait"}">${esc(d.lab_vigilance || "Standard")}</span><div class="note">revue avant le ${dfr(p)}${d.lab_be ? "" : " · BE à vérifier"}</div>`; };
+  const nb = {ldm: l.filter(d => d.ldm_statut !== "Signée").length, lab: l.filter(d => !d.lab_derniere_revue || prochaineRevueLab(d) < t).length,
+    acc: l.filter(d => !d.acceptation_date).length};
+  ecrire(`<h1>Conformité des missions</h1>
+  <div class="cartes"><div class="carte"><div class="n ${nb.ldm ? "r" : "v"}">${nb.ldm}</div><div class="l">Lettres de mission non signées</div></div>
+  <div class="carte"><div class="n ${nb.acc ? "o" : "v"}">${nb.acc}</div><div class="l">Acceptations de mission non documentées</div></div>
+  <div class="carte"><div class="n ${nb.lab ? "r" : "v"}">${nb.lab}</div><div class="l">Dossiers LAB à constituer ou à revoir</div></div></div>
+  ${l.length ? `<table><thead><tr><th>Dossier</th><th>Lettre de mission</th><th>Acceptation</th><th>LAB</th><th>Maintien</th><th>Compte rendu</th><th>${PAYS.libelle_liasse}</th><th>AGO</th><th>Dépôt</th></tr></thead><tbody>
+  ${l.map(d => `<tr><td><a href="#dossier/${d.id}">${esc(d.nom)}</a><div class="note">${esc((parId("collaborateurs", d.collaborateur_id)||{}).nom || "")}</div></td>
+  <td>${ldm(d)}</td><td>${d.acceptation_date ? `<span class="badge b-fait">✓</span><div class="note">${dfr(d.acceptation_date)}</div>` : '<span class="badge b-proche">À documenter</span>'}</td>
+  <td>${lab(d)}</td><td>${cellule(derniere(d.id, "MISSION-MAINTIEN"))}</td><td>${cellule(derniere(d.id, "MISSION-CR"))}</td>
+  <td>${cellule(derniere(d.id, PAYS.code_liasse))}</td><td>${cellule(derniere(d.id, PAYS.code_ag))}</td><td>${cellule(derniere(d.id, PAYS.code_depot))}</td></tr>`).join("")}
+  </tbody></table><p class="note">Pour chaque colonne, l'échéance la plus récente (jusqu'à 60 jours à venir). Modifiez la lettre de mission, l'acceptation et la LAB dans la fiche du dossier ;
+  le maintien, le compte rendu, la liasse, l'AGO et le dépôt se cochent comme les autres échéances.</p>` : `<div class="vide">Aucun dossier.</div>`}`);
+}
+
 function collaborateurs(){
   const l = vivants("collaborateurs");
-  ecrire(`<h1>Collaborateurs</h1><table><thead><tr><th>Nom</th><th>E-mail</th><th class="num">Coût horaire chargé (FCFA)</th><th class="num">Heures attendues / semaine</th><th></th></tr></thead><tbody>
+  ecrire(`<h1>Collaborateurs</h1><table><thead><tr><th>Nom</th><th>E-mail</th><th class="num">Coût horaire chargé (${PAYS.monnaie})</th><th class="num">Heures attendues / semaine</th><th></th></tr></thead><tbody>
   ${l.map(c => `<tr><td><input data-c="${c.id}" data-k="nom" value="${esc(c.nom)}"></td><td><input data-c="${c.id}" data-k="email" type="email" value="${esc(c.email)}"></td>
   <td class="num"><input data-c="${c.id}" data-k="taux" type="number" min="0" value="${esc(c.taux)}"></td><td class="num"><input data-c="${c.id}" data-k="heures_semaine" type="number" min="0" step="0.5" value="${esc(heuresAttendues(c))}"></td><td><button class="sec" data-sup="${c.id}">Retirer</button></td></tr>`).join("")}
   <tr><td><input id="nn" placeholder="Nom"></td><td><input id="ne" type="email" placeholder="e-mail"></td><td class="num"><input id="nt" type="number" min="0" placeholder="0"></td><td class="num"><input id="nh" type="number" min="0" step="0.5" value="40"></td><td><button id="aj">Ajouter</button></td></tr>
@@ -527,7 +689,7 @@ function honoraires(){
   <label>Date de facture<input type="date" name="date" required value="${iso(aujourdhui())}"></label>
   <label>Dossier<select name="dossier_id" required>${vivants("dossiers").sort((a,b)=>a.nom.localeCompare(b.nom)).map(d => `<option value="${d.id}">${esc(d.nom)}</option>`).join("")}</select></label>
   <label>N° de facture<input name="numero"></label>
-  <label>Montant HT (FCFA)<input type="number" name="montant" min="0" required></label>
+  <label>Montant HT (${PAYS.monnaie})<input type="number" name="montant" min="0" required></label>
   <div class="plein"><button>Ajouter</button></div></form>
   <h2>Dernières factures</h2>${l.length ? `<table><thead><tr><th>Date</th><th>Dossier</th><th>N°</th><th class="num">Montant HT</th><th></th></tr></thead><tbody>
   ${l.map(x => `<tr><td>${dfr(x.date)}</td><td>${esc((parId("dossiers", x.dossier_id)||{}).nom)}</td><td>${esc(x.numero)}</td><td class="num">${fcfa(x.montant)}</td>
@@ -567,26 +729,25 @@ function parametres(){
   ecrire(`<h1>Paramètres</h1><form class="form" id="f">
   <label>Nom du cabinet<input name="cabinet" value="${esc(data.parametres.cabinet)}"></label>
   <label>Adresse en copie des alertes<input type="email" name="copie" value="${esc(data.parametres.copie)}"></label>
+  ${VIGILANCES.map(v => `<label>LAB — revue tous les … ans (vigilance ${v.toLowerCase()})<input type="number" min="1" max="10" name="lab_${v}" value="${labAnnees(v)}"></label>`).join("")}
   <div class="plein"><button>Enregistrer</button></div></form>
-  <h2>Données</h2><p>${modeLocal ? "Les données sont dans ce navigateur." : `Fichier de données : <b>${esc(fichier && fichier.name)}</b>. Il est enregistré automatiquement à chaque modification.`}</p>
+  <h2>Données</h2><p>${modeLocal ? "Les données sont dans ce navigateur." : `Dossier : <b>${esc(dossierPartage && dossierPartage.name)}</b>, fichier <b>${NOM_DONNEES}</b>, enregistré automatiquement à chaque modification.${PAYS.pennylane ? ` Dernière synchronisation Pennylane : <b>${data.pennylane_le ? new Date(data.pennylane_le).toLocaleString("fr-FR") : "aucune"}</b>.` : ""}`}</p>
   <div class="barre"><button class="sec" id="exp">Télécharger une copie (sauvegarde .json)</button><button class="sec" id="csv">Exporter les échéances (Excel .csv)</button>
-  ${modeLocal ? `<label class="btn sec">Importer une sauvegarde<input type="file" id="imp" accept=".json" hidden></label>` : `<button class="sec" id="chg">Changer de fichier</button>`}</div>
+  ${modeLocal ? `<label class="btn sec">Importer une sauvegarde<input type="file" id="imp" accept=".json" hidden></label>` : `<button class="sec" id="chg">Changer de dossier</button>`}</div>
   <h2>Règles appliquées</h2><table><thead><tr><th>Échéance</th><th>Date limite</th></tr></thead><tbody>
-  ${[["TVA (assujettis)","10 du mois suivant"],["ITS et VPS (salariés)","10 du mois suivant"],["AIB","10 du mois suivant"],["IRF — retenue sur loyers versés","10 du mois suivant"],
-     ["CNSS","15 du mois suivant si effectif ≥ 20, sinon trimestriel (15 du mois suivant le trimestre)"],["IS — acomptes","10 mars, 10 juin, 10 septembre, 10 décembre"],
-     ["Patente","acompte le 10 février, solde le 30 avril"],["DSF et solde IS","30 avril"],["IRF — propriétaire","30 avril (à confirmer)"],
-     ["États financiers SYSCOHADA","objectif cabinet : 3 mois après la clôture"],["AGO (OHADA)","6 mois après la clôture"],["Dépôt au RCCM","7 mois après la clôture (à confirmer)"]]
+  ${[...PAYS.regles, ...REGLES_MISSION()]
      .map(([a,b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("")}</tbody></table>
-  <p class="note">Dates reportées au jour ouvré suivant (week-ends et fêtes fixes et chrétiennes ; les fêtes musulmanes ne sont pas prises en compte). À relire après chaque loi de finances.</p>`);
-  $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target); data.parametres = {cabinet: f.get("cabinet").trim(), copie: f.get("copie").trim()};
+  <p class="note">${PAYS.note_regles}</p>`);
+  $("#f").onsubmit = ev => { ev.preventDefault(); const f = new FormData(ev.target); data.parametres = {cabinet: f.get("cabinet").trim(), copie: f.get("copie").trim(),
+      lab_annees: Object.fromEntries(VIGILANCES.map(v => [v, Number(f.get("lab_" + v)) || LAB_ANNEES_DEFAUT[v]]))}; recalculerTout();
     data.parametres_maj = maintenant(); sale = true; programmerEnregistrement(); etat("Paramètres enregistrés", "ok"); };
   const telecharger = (nom, contenu, type) => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([contenu], {type})); a.download = nom; a.click(); };
-  $("#exp").onclick = () => { enrichir(); telecharger(`echeances-benin-sauvegarde-${iso(aujourdhui())}.json`, JSON.stringify(data, null, 1), "application/json"); };
+  $("#exp").onclick = () => { enrichir(); telecharger(`${CLE}-sauvegarde-${iso(aujourdhui())}.json`, JSON.stringify(data, null, 1), "application/json"); };
   $("#csv").onclick = () => { const l = echeancesVisibles().sort((a,b) => a.date_limite.localeCompare(b.date_limite)), q = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
     telecharger(`echeances-${iso(aujourdhui())}.csv`, "﻿" + [["Date limite","Dossier","Échéance","Catégorie","Responsable","Statut","Commentaire","Fait le"].join(";"),
       ...l.map(e => { const d = parId("dossiers", e.dossier_id) || {}; return [dfr(e.date_limite), d.nom, e.libelle, e.categorie, (parId("collaborateurs", d.collaborateur_id)||{}).nom, e.statut, e.commentaire, dfr(e.date_realisation)].map(q).join(";"); })].join("\r\n"), "text/csv"); };
   if ($("#imp")) $("#imp").onchange = async ev => { try { const v = JSON.parse(await ev.target.files[0].text()); data = fusionner(data, v); sale = true; programmerEnregistrement(); remplirMoi(); afficher(); } catch (e) { alert("Fichier illisible."); } };
-  if ($("#chg")) $("#chg").onclick = ouvrirFichier;
+  if ($("#chg")) $("#chg").onclick = choisirDossier;
 }
 
 accueil();
